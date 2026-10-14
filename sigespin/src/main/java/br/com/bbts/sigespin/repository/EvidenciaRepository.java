@@ -10,4 +10,8 @@ import java.util.List;
 public interface EvidenciaRepository extends JpaRepository<Evidencia, Long> {
 
     List<Evidencia> findByProjetoIdOrderByDataUploadDesc(Long projetoId);
+
+    List<Evidencia> findBySolicitacaoAvancoIdOrderByDataUploadDesc(Long solicitacaoAvancoId);
+
+    boolean existsBySolicitacaoAvancoId(Long solicitacaoAvancoId);
 }

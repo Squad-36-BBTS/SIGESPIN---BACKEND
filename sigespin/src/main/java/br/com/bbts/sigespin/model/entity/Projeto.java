@@ -36,6 +36,18 @@ public class Projeto {
     @JoinColumn(name = "responsavel_po_id", nullable = false)
     private Usuario responsavelPo;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "demandante_id")
+    private Usuario demandante;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "analista_responsavel_id")
+    private Usuario analistaResponsavel;
+
+    @Version
+    @Column(nullable = false)
+    private Long versao;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 30)
     private ArenaTipo arena;
@@ -63,17 +75,20 @@ public class Projeto {
     private LocalDateTime atualizadoEm;
 
 
-    @OneToMany(mappedBy = "projeto", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(mappedBy = "projeto")
     private List<DeliberacaoHistorico> deliberacoes = new ArrayList<>();
 
     @OneToMany(mappedBy = "projeto", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<AvaliacaoRadar> avaliacoesRadar = new ArrayList<>();
 
-    @OneToMany(mappedBy = "projeto", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(mappedBy = "projeto")
     private List<HistoricoTransicoes> historicoTransicoes = new ArrayList<>();
 
     @OneToMany(mappedBy = "projeto", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Evidencia> evidencias = new ArrayList<>();
+
+    @OneToMany(mappedBy = "projeto")
+    private List<SolicitacaoAvanco> solicitacoesAvanco = new ArrayList<>();
 
 
     @PrePersist

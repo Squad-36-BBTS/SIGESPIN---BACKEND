@@ -6,6 +6,8 @@ Este documento consolida todas as regras de negócio, modelagem de dados, arquit
 
 Utilize este documento como base primária (fonte da verdade) para gerar entidades, repositórios, serviços, controladores e configurações de segurança em Spring Boot.
 
+> **Revisão de domínio — 14/10/2026:** consultar [DOCUMENTACAO_EVOLUCAO_DOMINIO.md](./DOCUMENTACAO_EVOLUCAO_DOMINIO.md), que prevalece sobre os contratos originais abaixo quanto às responsabilidades e aos avanços. Todos os perfis autenticados consultam todos os projetos. DEMANDANTE faz intake/cadastro; ANALISTA solicita avanços com evidências; COMITE decide; EXECUTIVO acompanha o portfólio e os dados financeiros. Alterações de TRL/etapa devem resultar de solicitação aprovada, sem caminhos diretos que contornem esse fluxo. Rejeitar uma solicitação não descontinua o projeto. Priorização e aprovação de orçamento permanecem fora do escopo atual. Os endpoints abaixo são contratos originais a revisar nas próximas fases, não APIs já implementadas.
+
 ## **1\. Visão Geral e Stack Tecnológica**
 
 * **Domínio:** Gestão de portfólio de inovação (normativo PRO663-009). Fluxo de ideias desde o *Intake* (com IA) até a deliberação via Kanban e Stage-Gates.  

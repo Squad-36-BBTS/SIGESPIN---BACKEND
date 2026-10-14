@@ -30,6 +30,8 @@
 
 ---
 
+> **Atualização de 14/10/2026:** as mudanças posteriores de responsabilidades e modelagem estão em [Evolução do domínio](./DOCUMENTACAO_EVOLUCAO_DOMINIO.md). Esse complemento prevalece nas regras de solicitação e aprovação de avanços. Todos os perfis poderão consultar todos os projetos do portfólio.
+
 ## 1. Visão Geral do Projeto
 
 O **SIGES-PIN** é um sistema corporativo que gerencia todo o ciclo de vida de projetos de inovação dentro da BBTS, aderente ao normativo `PRO663-009`. Ele opera em quatro pilares:

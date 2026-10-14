@@ -22,6 +22,10 @@ public class Evidencia {
     @JoinColumn(name = "projeto_id", nullable = false)
     private Projeto projeto;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "solicitacao_avanco_id")
+    private SolicitacaoAvanco solicitacaoAvanco;
+
     @Column(name = "nome_arquivo", nullable = false, length = 255)
     private String nomeArquivo;
 

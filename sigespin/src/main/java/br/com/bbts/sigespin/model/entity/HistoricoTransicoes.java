@@ -1,5 +1,6 @@
 package br.com.bbts.sigespin.model.entity;
 
+import br.com.bbts.sigespin.model.enums.TipoMudanca;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -26,8 +27,13 @@ public class HistoricoTransicoes {
     @JoinColumn(name = "usuario_id", nullable = false)
     private Usuario usuario;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "tipo_mudanca", nullable = false, length = 20)
-    private String tipoMudanca;
+    private TipoMudanca tipoMudanca;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "solicitacao_avanco_id")
+    private SolicitacaoAvanco solicitacaoAvanco;
 
     @Column(name = "valor_anterior", nullable = false, length = 30)
     private String valorAnterior;
