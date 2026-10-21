@@ -10,6 +10,8 @@ import org.springframework.stereotype.Repository;
 
 import java.util.List;
 
+/** Consulta do legado V2. Escritas sao bloqueadas pelo banco; nao usar como fila ativa. */
+@Deprecated
 @Repository
 public interface SolicitacaoAvancoRepository extends JpaRepository<SolicitacaoAvanco, Long> {
 

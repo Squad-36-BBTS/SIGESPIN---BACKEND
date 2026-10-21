@@ -2,28 +2,27 @@
 
 **Sistema Corporativo de Gestão do Portfólio de Inovação da BBTS**
 
-> Versão: 1.0 (Camada de Domínio – Entidades, Enums, Repositórios e Migration)
-> Autor: equipe SIGES‑PIN – Back‑end
-
 ## 📖 Visão Geral
 
-O SIGES‑PIN gerencia o ciclo completo de projetos de inovação, desde a captura de demandas (Intake com IA) até a governança, auditoria e entrega de evidências.  Ele está alinhado ao normativo **PRO663‑009** da BBTS e segue a arquitetura **Spring Boot 3.x**, **Java 21**, **PostgreSQL** e **Flyway** para migrações.
+O SIGES‑PIN organiza o portfólio de projetos de inovação, desde o registro de demandas espontâneas ou induzidas até qualificação, experimentação, governança, evidências e validação das entregas. O domínio está alinhado ao normativo **PRO663‑009** da BBTS e usa **Spring Boot 3.x**, **Java 21**, **PostgreSQL** e **Flyway**.
 
 ## ✨ Principais Funcionalidades
 
-- **Intake Inteligente** – Integração com Google Gemini (gemini‑1.5‑flash) para sugestão de arena, hipótese, TRL inicial e scores de radar.
-- **Funil de Inovação** – Controle estrito de estágios (`IDEACAO → POC → MVP → CONCLUIDO / DESCONTINUADO`).
-- **Governança** – Deliberações do Comitê (`APROVADO`, `PIVOTADO`, `REPROVADO`).
-- **Auditoria** – Log de todas as mudanças de **status** e **TRL** (`HistoricoTransicoes`).
-- **Evidências** – Upload de arquivos para **AWS S3** com referência armazenada no banco.
-- **Segurança** – JWT (jjwt) + Spring Security, perfis de acesso (`DEMANDANTE`, `ANALISTA`, `COMITE`, `EXECUTIVO`).
-- **Métricas** – Dashboard com contagens e médias via consultas SQL.
+- **Entrada da demanda** – Origens espontânea e induzida, com ação de mobilização opcional conforme a origem.
+- **Qualificação e pareceres** – Avaliações do Analista e consultas a Especialistas com histórico.
+- **Maturidade** – Avaliações de TRL com evidências e justificativa, incluindo reavaliações para níveis menores.
+- **Kanban configurável** – Etapas, transições permitidas e exigência de governança configuráveis.
+- **Participação do Demandante** – Entregas e validações preservadas como histórico.
+- **Perfis de domínio** – `DEMANDANTE`, `ANALISTA` e `ESPECIALISTA`; os usuários autenticados poderão consultar o portfólio global.
+- **Persistência e auditoria** – PostgreSQL, Spring Data JPA e migrations Flyway.
+
+Os serviços, endpoints, integração com Gemini e AWS S3, dashboard e segurança JWT ainda são etapas futuras; o domínio preparado para esses fluxos não significa que essas integrações já estejam disponíveis.
 
 ## 🏛️ Arquitetura
 
-- **Camada de Domínio** – Entidades JPA, Enums, Repositórios e migração Flyway (documentada em `DOCUMENTACAO_FASE1_DOMINIO.md`).
+- **Camada de Domínio** – Entidades JPA, Enums, Repositórios e migrations Flyway (detalhada em [`DOCUMENTACAO_FASE1_DOMINIO.md`](./sigespin/DOCUMENTACAO_FASE1_DOMINIO.md)).
 - **Camada de Serviço** – (a ser implementada) regras de negócio, validações e integração com a IA.
-- **Camada de API** – (a ser implementada) controladores REST seguindo o contrato descrito no *Master Spec*.
+- **Camada de API** – (a ser implementada) controllers REST e DTOs, conforme contratos a serem alinhados.
 - **Persistência** – PostgreSQL 16+ hospedado no Supabase, versionado com Flyway.
 - **CI/CD** – Recomenda‑se GitHub Actions para build/teste e deployment.
 
@@ -71,8 +70,7 @@ Os testes unitários e de integração estão localizados em `src/test/java`.  P
 
 ## 📚 Documentação Técnica
 
-- **Master Spec (Back‑end)** – [`SIGES-PIN_ Master Spec Back-end.md`](./SIGES-PIN_%20Master%20Spec%20Back-end.md)
-- **Documentação da Camada de Domínio** – [`DOCUMENTACAO_FASE1_DOMINIO.md`](./DOCUMENTACAO_FASE1_DOMINIO.md)
+O documento canônico desta etapa é [`DOCUMENTACAO_FASE1_DOMINIO.md`](./sigespin/DOCUMENTACAO_FASE1_DOMINIO.md). Reúne o contexto do projeto, conceitos implementados, modelo de domínio, regras, migrations, validações e pendências para as próximas camadas.
 
 ## 🤝 Contribuição
 

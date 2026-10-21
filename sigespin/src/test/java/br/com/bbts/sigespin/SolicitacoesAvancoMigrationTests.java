@@ -15,7 +15,8 @@ class SolicitacoesAvancoMigrationTests {
         String url = System.getenv("SIGESPIN_TEST_DB_URL");
         String usuario = System.getenv().getOrDefault("SIGESPIN_TEST_DB_USER", "postgres");
         String senha = System.getenv().getOrDefault("SIGESPIN_TEST_DB_PASSWORD", "");
-        Flyway.configure().dataSource(url, usuario, senha).load().migrate();
+        String schema = "v2_" + java.util.UUID.randomUUID().toString().replace("-", "");
+        Flyway.configure().dataSource(url, usuario, senha).schemas(schema).target("2").load().migrate();
 
         try (var recurso = getClass().getResourceAsStream("/db/validar_solicitacoes_avanco.sql")) {
             if (recurso == null) {
@@ -25,7 +26,9 @@ class SolicitacoesAvancoMigrationTests {
                     .replaceAll("(?m)^\\\\.*$", "");
             try (var conexao = DriverManager.getConnection(url, usuario, senha);
                  var comando = conexao.createStatement()) {
+                comando.execute("SET search_path TO " + schema);
                 comando.execute(script);
+                comando.execute("DROP SCHEMA " + schema + " CASCADE");
             }
         }
     }

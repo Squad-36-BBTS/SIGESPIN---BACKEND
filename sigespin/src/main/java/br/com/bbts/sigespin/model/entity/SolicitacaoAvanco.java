@@ -10,7 +10,9 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
+/** Registro exclusivamente legado V1/V2; nao participa do novo fluxo. */
 @Entity
+@org.hibernate.annotations.Immutable
 @Table(name = "solicitacoes_avanco")
 @Getter
 @Setter

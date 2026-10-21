@@ -1,546 +1,282 @@
-# 📘 SIGES-PIN — Documentação Técnica: Fase 1
+# SIGES-PIN — Documentação técnica final da Fase 1
 
-**Sistema Corporativo de Gestão do Portfólio de Inovação da BBTS**
+**Camada:** domínio, persistência e integridade do portfólio<br>
+**Revisão:** 21/10/2026<br>
+**Stack:** Java 21, Spring Boot 3.3.4, Spring Data JPA, Hibernate, PostgreSQL e Flyway
 
-> **Data:** 05/10/2026  
-> **Versão:** 1.0 — Camada de Domínio (Entidades, Enums, Repositórios e Migration)  
-> **Equipe:** Back-end SIGES-PIN
+## 1. Projeto e objetivo desta etapa
 
----
+O SIGES-PIN organiza o portfólio de inovação da BBTS ao longo da entrada e qualificação das demandas, análises técnicas, experimentação, governança e validação das entregas. Esta primeira fase implementa o modelo persistente que representa esses conceitos e mantém o histórico necessário para que as próximas camadas processem as iniciativas com segurança.
 
-## 📑 Índice
+O fluxo do domínio acompanha as orientações do PRO663-009 e contempla dois mecanismos de entrada: demandas espontâneas e ações induzidas, como campanhas, desafios, hackathons e residências.
 
-1. [Visão Geral do Projeto](#1-visão-geral-do-projeto)
-2. [Stack Tecnológica](#2-stack-tecnológica)
-3. [Estrutura de Pastas do Código](#3-estrutura-de-pastas-do-código)
-4. [Conceitos Fundamentais](#4-conceitos-fundamentais)
-   - 4.1 [O que é uma Entidade JPA](#41-o-que-é-uma-entidade-jpa)
-   - 4.2 [O que é um Enum](#42-o-que-é-um-enum)
-   - 4.3 [O que é um Repository](#43-o-que-é-um-repository)
-   - 4.4 [Flyway vs Hibernate — Quem faz o quê?](#44-flyway-vs-hibernate--quem-faz-o-quê)
-5. [Configuração da Aplicação](#5-configuração-da-aplicação)
-6. [Modelagem de Dados](#6-modelagem-de-dados)
-   - 6.1 [Diagrama ER (Entidade-Relacionamento)](#61-diagrama-er-entidade-relacionamento)
-   - 6.2 [Enumeradores](#62-enumeradores)
-   - 6.3 [Entidades JPA (Detalhamento)](#63-entidades-jpa-detalhamento)
-7. [Repositórios (Acesso ao Banco)](#7-repositórios-acesso-ao-banco)
-8. [Migration Flyway](#8-migration-flyway)
-9. [Glossário de Anotações](#9-glossário-de-anotações)
-10. [Próximos Passos](#10-próximos-passos)
+Esta entrega contém entidades JPA, enums, repositórios Spring Data, migrations versionadas, constraints, índices, proteção do histórico e testes de persistência. Os serviços de negócio completos, a API REST, DTOs, autenticação JWT, autorização, integração com IA e armazenamento físico de arquivos serão implementados em fases posteriores. A existência de uma entidade para um fluxo futuro não significa que já exista uma tela ou endpoint para operá-lo.
 
----
+## 2. Perfis e responsabilidades
 
-> **Atualização de 14/10/2026:** as mudanças posteriores de responsabilidades e modelagem estão em [Evolução do domínio](./DOCUMENTACAO_EVOLUCAO_DOMINIO.md). Esse complemento prevalece nas regras de solicitação e aprovação de avanços. Todos os perfis poderão consultar todos os projetos do portfólio.
+Os perfis são valores da entidade `Usuario`; não são entidades separadas.
 
-## 1. Visão Geral do Projeto
-
-O **SIGES-PIN** é um sistema corporativo que gerencia todo o ciclo de vida de projetos de inovação dentro da BBTS, aderente ao normativo `PRO663-009`. Ele opera em quatro pilares:
-
-| Pilar | Descrição |
+| Perfil | Responsabilidade prevista |
 |---|---|
-| **Intake com IA** | O demandante descreve uma dor e a IA (Google Gemini) sugere arena, hipótese, TRL e scores do radar. |
-| **Funil Stage-Gates** | Projetos avançam por fases: `IDEAÇÃO → POC → MVP → CONCLUÍDO`, com regras rígidas de transição. |
-| **Governança (Comitê)** | Deliberações formais (`APROVADO`, `PIVOTADO`, `REPROVADO`) controlam o avanço ou descontinuação. |
-| **Rastreabilidade** | Toda mudança de status e TRL é auditada. Evidências são armazenadas na nuvem (AWS S3). |
+| `DEMANDANTE` | Registra necessidades, problemas e oportunidades, fornece contexto ao longo da jornada e valida resultados e MVPs. |
+| `ANALISTA` | Faz a triagem e qualificação, avalia aderência à tese, relevância, inovação, viabilidade e maturidade, consulta Especialistas, acompanha experimentos, avalia TRL e opera o portfólio. |
+| `ESPECIALISTA` | Emite pareceres técnicos e decide solicitações de transição Kanban que exigem governança. |
 
----
+Usuários autenticados poderão consultar todos os projetos do portfólio. Essa decisão descreve a regra de produto, ainda não uma autorização implementada. A consulta global não implica permissão para alterar os projetos.
 
-## 2. Stack Tecnológica
+Na V3, `COMITE` foi convertido em `ESPECIALISTA` e `EXECUTIVO` em `ANALISTA`. A segunda conversão amplia as responsabilidades do perfil; a equipe deve revisar esses usuários antes de habilitar permissões. Os IDs, projetos e históricos foram preservados. Os campos financeiros permanecem no domínio, mas sua exposição por perfil depende da definição dos futuros DTOs e da política financeira.
 
-| Componente | Tecnologia | Versão |
-|---|---|---|
-| Linguagem | Java | 21 |
-| Framework | Spring Boot | 3.3.4 |
-| ORM | Hibernate (via Spring Data JPA) | Gerenciado pelo Spring |
-| Banco de Dados | PostgreSQL (Supabase) | 16+ |
-| Migrações | Flyway | Gerenciado pelo Spring |
-| Segurança | Spring Security + JWT (jjwt) | 0.12.6 |
-| Armazenamento | AWS S3 SDK | 2.27.21 |
-| Utilitários | Lombok | Gerenciado pelo Spring |
+## 3. Conceitos usados no código
 
-> [!NOTE]
-> **Lombok** é uma biblioteca que gera automaticamente código repetitivo (getters, setters, construtores) em tempo de compilação. Ao ver `@Getter` numa classe, o Lombok cria todos os métodos `get` para você — sem que precisemos escrevê-los manualmente.
+### Entidade JPA e tabela
 
----
+Uma classe com `@Entity` representa registros persistidos. `@Table` define a tabela; `@Id` identifica a linha; `@GeneratedValue(IDENTITY)` delega a geração do identificador ao PostgreSQL. `@ManyToOne` e `@JoinColumn` representam referências a outros registros por chave estrangeira. Relacionamentos são carregados sob demanda com `FetchType.LAZY` para evitar trazer grafos inteiros sem necessidade.
 
-## 3. Estrutura de Pastas do Código
+Os campos Java descrevem o mapeamento ORM. As migrations Flyway criam as constraints reais. Um `nullable = false` no mapeamento ajuda o Hibernate a entender o domínio, mas não substitui a constraint SQL.
 
-```
-sigespin/src/main/
-├── java/br/com/bbts/sigespin/
-│   ├── SigespinApplication.java              ← Ponto de entrada da aplicação
-│   │
-│   ├── model/
-│   │   ├── enums/                            ← Valores fixos (domínios fechados)
-│   │   │   ├── PerfilUsuario.java
-│   │   │   ├── ArenaTipo.java
-│   │   │   ├── StatusFunil.java
-│   │   │   ├── DecisaoTipo.java
-│   │   │   └── TipoLeituraRadar.java
-│   │   │
-│   │   └── entity/                           ← Classes que representam tabelas
-│   │       ├── Usuario.java
-│   │       ├── Projeto.java
-│   │       ├── DeliberacaoHistorico.java
-│   │       ├── AvaliacaoRadar.java
-│   │       ├── HistoricoTransicoes.java
-│   │       └── Evidencia.java
-│   │
-│   └── repository/                           ← Interfaces de acesso ao banco
-│       ├── UsuarioRepository.java
-│       ├── ProjetoRepository.java
-│       ├── DeliberacaoHistoricoRepository.java
-│       ├── AvaliacaoRadarRepository.java
-│       ├── HistoricoTransicoesRepository.java
-│       └── EvidenciaRepository.java
-│
-└── resources/
-    ├── application.properties                ← Configurações da aplicação
-    └── db/migration/
-        └── V1__criar_tabelas_iniciais.sql    ← Script SQL de criação das tabelas
-```
+### Enum
 
----
+`@Enumerated(EnumType.STRING)` persiste o nome do valor do enum. Isso torna os valores compreensíveis no banco, mas renomear uma constante exige avaliar os dados e criar uma migration compatível. Usamos enums para opções fechadas, como perfil, origem, tipo de transição e resultado de validação. As etapas do Kanban são entidades, pois podem ser configuradas pelos usuários.
 
-## 4. Conceitos Fundamentais
+### Repository
 
-### 4.1 O que é uma Entidade JPA
+Um repository Spring Data declara operações de leitura e persistência sem implementar SQL repetitivo. Ele estende `JpaRepository<Entidade, Long>`, herdando operações CRUD. Métodos como `findByProjetoId` instruem o Spring Data a compor uma consulta pela propriedade. Métodos com `Pageable` devolvem páginas; o serviço ainda deve escolher limites e ordenação úteis.
 
-Uma **Entidade** é uma classe Java que o Hibernate mapeia diretamente para uma **tabela** no banco de dados. Cada instância (objeto) da classe corresponde a uma **linha** da tabela, e cada atributo corresponde a uma **coluna**.
+O repositório não é uma camada de autorização. Perfis, autoria, atribuições e regras de negócio serão conferidos nos serviços e na segurança.
 
-```
-┌─────────────────────────┐           ┌─────────────────────────┐
-│   Classe Java           │           │   Tabela PostgreSQL     │
-│   (Entidade)            │  ←─────→  │   (Banco de Dados)      │
-├─────────────────────────┤           ├─────────────────────────┤
-│ @Entity                 │           │                         │
-│ class Usuario {         │           │ CREATE TABLE usuarios ( │
-│   Long id;              │    =      │   id BIGSERIAL PK,      │
-│   String nome;          │    =      │   nome VARCHAR(150),    │
-│   String email;         │    =      │   email VARCHAR(200),   │
-│   PerfilUsuario perfil; │    =      │   perfil VARCHAR(30),   │
-│ }                       │           │ );                      │
-└─────────────────────────┘           └─────────────────────────┘
-```
+### Migration e Flyway
 
-**Regra de ouro:** Nunca instancie `new Usuario()` e tente salvar sem passar por um Repository. O Hibernate precisa gerenciar o ciclo de vida do objeto.
+Flyway aplica scripts SQL ordenados por versão e registra o resultado em `flyway_schema_history`. A V1 cria o domínio original; a V2 adiciona solicitações de avanço; a V3 evolui o domínio conforme o feedback do cliente; a V4 corrige e fortalece a montagem dos conjuntos documentais. Scripts já aplicados não devem ser editados: uma mudança subsequente é outra migration.
 
-### 4.2 O que é um Enum
+### Constraints e transações
 
-Enums são **tipos com valores fixos e imutáveis**. São usados quando um campo só pode ter um conjunto limitado de opções. Em vez de usar `String` (onde qualquer texto seria aceito), usamos Enum para que o compilador Java rejeite valores inválidos **antes mesmo de rodar o programa**.
+Chaves estrangeiras e `CHECK` protegem a consistência mesmo quando uma escrita não passa pelo serviço esperado. Índices aceleram consultas. Triggers são usados apenas onde uma regra de integridade requer coordenar várias tabelas ou preservar registros. O `@Version` implementa concorrência otimista no JPA: duas sessões editam a mesma versão e a sessão obsoleta deve receber conflito.
 
-### 4.3 O que é um Repository
+O banco não sabe qual pessoa está autenticada. Validar perfil, usuário ativo, atribuição do Analista e identidade do Demandante exige a futura camada de serviço/segurança.
 
-Um **Repository** é uma interface que o Spring Data JPA implementa automaticamente em tempo de execução. Você declara **o que quer** (através do nome do método ou de uma `@Query`) e o Spring gera **o SQL** para você.
+## 4. Fluxo dos usuários
 
-```java
-// Você escreve apenas isto:
-Optional<Usuario> findByEmail(String email);
+### Entrada e qualificação
 
-// O Spring gera automaticamente isto nos bastidores:
-// SELECT * FROM usuarios WHERE email = ?
-```
+Uma demanda **espontânea** nasce de um problema, necessidade ou oportunidade registrada por um Demandante. Uma demanda **induzida** vem de uma ação de mobilização, como um desafio ou hackathon. Os dois tipos podem aguardar triagem: backlog é uma situação de trabalho, não uma origem.
 
-**Métodos herdados de `JpaRepository<T, ID>`:**
+O Analista registra uma qualificação textual, preservando as análises de aderência à tese, relevância, grau de inovação, viabilidade/factibilidade e maturidade. Quando precisa de conhecimento especializado, encaminha uma pergunta ao Especialista, que pode responder com parecer técnico fundamentado. Parecer é subsídio técnico, não autorização de governança.
 
-| Método | SQL equivalente |
-|---|---|
-| `save(entity)` | `INSERT INTO ...` ou `UPDATE ...` |
-| `findById(id)` | `SELECT * FROM ... WHERE id = ?` |
-| `findAll()` | `SELECT * FROM ...` |
-| `deleteById(id)` | `DELETE FROM ... WHERE id = ?` |
-| `count()` | `SELECT COUNT(*) FROM ...` |
-| `existsById(id)` | `SELECT COUNT(*) > 0 FROM ... WHERE id = ?` |
+### Evolução de maturidade e Kanban
 
-### 4.4 Flyway vs Hibernate — Quem faz o quê?
+O Analista atualiza o TRL à luz dos resultados e evidências. Cada avaliação registra o valor anterior e o novo, o autor, a justificativa e a data. O TRL vai de 1 a 9; reduções justificadas são permitidas. Não há pedido de autorização de governança para cada avaliação.
 
-Este é um ponto que gera muita confusão em quem está aprendendo. Vamos separar claramente os papéis:
+O projeto ocupa uma etapa do Kanban configurável. As etapas iniciais são Ideação, POC, MVP, Concluído e Descontinuado. Analista e Especialista poderão acrescentar colunas ao mesmo quadro do portfólio. `TransicaoKanban` define quais movimentos são possíveis e se cada um exige governança. Para a configuração inicial, as transições previstas exigem governança; nenhuma transição sem governança foi presumida.
 
-```
-┌────────────────────────────────────────────────────────────┐
-│                    FLYWAY (O Arquiteto)                     │
-│                                                            │
-│  ✅ CRIA tabelas no banco      (CREATE TABLE ...)          │
-│  ✅ ALTERA estrutura           (ALTER TABLE ADD COLUMN)    │
-│  ✅ Versiona as mudanças       (V1__, V2__, V3__...)       │
-│  ✅ Garante que todos os devs  tenham o mesmo banco        │
-│                                                            │
-│  ❌ NÃO lê nem grava dados da aplicação                   │
-└────────────────────────────────────────────────────────────┘
+O Analista pode propor transições que exijam governança. Um Especialista aprova ou rejeita com justificativa. Aprovação deverá mudar a etapa e registrar a movimentação na mesma transação; rejeição mantém a etapa atual. Para uma transição configurada sem governança, o Analista poderá movimentar o projeto diretamente. Regras de autorização e a operação atômica pertencem aos futuros serviços.
 
-┌────────────────────────────────────────────────────────────┐
-│               HIBERNATE / JPA (O Tradutor)                 │
-│                                                            │
-│  ✅ INSERE dados               (save → INSERT INTO ...)   │
-│  ✅ CONSULTA dados             (findById → SELECT ...)     │
-│  ✅ ATUALIZA dados             (save → UPDATE ...)         │
-│  ✅ VALIDA se classes = banco  (ddl-auto=validate)         │
-│                                                            │
-│  ❌ NÃO cria nem altera tabelas (quem faz isso é o Flyway)│
-└────────────────────────────────────────────────────────────┘
-```
+### Entregas
 
-**Ciclo de vida ao iniciar a aplicação:**
-1. O **Flyway** roda primeiro — executa os scripts SQL pendentes (`V1__...sql`, `V2__...sql`).
-2. O **Hibernate** roda depois — verifica se as classes Java (`@Entity`) batem com as tabelas que o Flyway criou.
-3. Se algo não bater, o Hibernate **lança um erro** e a aplicação não sobe (proteção contra inconsistências).
+Uma entrega ou MVP é submetida para validação do Demandante, dono do problema. A validação registra um resultado e observações e pode ser repetida, preservando as respostas anteriores. Validar uma entrega não aprova tecnicamente o projeto nem muda o Kanban automaticamente.
 
----
-
-## 5. Configuração da Aplicação
-
-**Arquivo:** `src/main/resources/application.properties`
-
-```properties
-spring.application.name=sigespin
-
-# Conexão com o PostgreSQL
-spring.datasource.url=jdbc:postgresql://localhost:5432/sigespin
-spring.datasource.username=postgres
-spring.datasource.password=postgres
-
-# Hibernate: apenas VALIDA, não cria tabelas
-spring.jpa.hibernate.ddl-auto=validate
-spring.jpa.show-sql=true                    # Exibe as queries no console (útil para debug)
-spring.jpa.properties.hibernate.format_sql=true   # Formata o SQL para leitura humana
-
-# Flyway: ativado para executar os scripts de migration
-spring.flyway.enabled=true
-spring.flyway.baseline-on-migrate=true
-```
-
-| Propriedade | Para que serve |
-|---|---|
-| `ddl-auto=validate` | Hibernate só valida; não cria/altera tabelas |
-| `show-sql=true` | Imprime no console todo SQL gerado (desligar em produção) |
-| `baseline-on-migrate` | Permite rodar Flyway em banco que já existia antes |
-
-> [!IMPORTANT]
-> **Em produção**, as credenciais do banco (`username`, `password`) devem vir de **variáveis de ambiente**, nunca hardcoded no arquivo. Exemplo: `spring.datasource.password=${DB_PASSWORD}`.
-
----
-
-## 6. Modelagem de Dados
-
-### 6.1 Diagrama ER (Entidade-Relacionamento)
+## 5. Modelo de entidades e relacionamentos
 
 ```mermaid
 erDiagram
-    USUARIOS ||--o{ PROJETOS : "é responsável PO"
-    PROJETOS ||--o{ DELIBERACAO_HISTORICO : "tem deliberações"
-    PROJETOS ||--o{ AVALIACAO_RADAR : "tem avaliações"
-    PROJETOS ||--o{ HISTORICO_TRANSICOES : "tem transições"
-    PROJETOS ||--o{ EVIDENCIAS : "tem evidências"
-    USUARIOS ||--o{ DELIBERACAO_HISTORICO : "registra decisão"
-    USUARIOS ||--o{ HISTORICO_TRANSICOES : "registra mudança"
-
-    USUARIOS {
-        bigserial id PK
-        varchar nome
-        varchar email UK
-        varchar senha_hash
-        varchar perfil "DEMANDANTE | ANALISTA | COMITE | EXECUTIVO"
-        boolean ativo
-    }
-
-    PROJETOS {
-        bigserial id PK
-        varchar titulo
-        text descricao_dor
-        bigint area_demandante_id
-        bigint responsavel_po_id FK
-        varchar arena "EFICIENCIA_OPERACIONAL | NEGOCIOS_DIGITAIS | ..."
-        varchar status_funil "IDEACAO | POC | MVP | CONCLUIDO | DESCONTINUADO"
-        integer trl_atual "1 a 9"
-        text hipotese_solucao
-        boolean potencial_lei_do_bem
-        numeric dispendio_estimado "12 digitos e 2 decimais"
-        timestamp criado_em
-        timestamp atualizado_em
-    }
-
-    DELIBERACAO_HISTORICO {
-        bigserial id PK
-        bigint projeto_id FK
-        bigint responsavel_id FK
-        varchar decisao "APROVADO | PIVOTADO | REPROVADO"
-        text justificativa
-        timestamp data_decisao
-    }
-
-    AVALIACAO_RADAR {
-        bigserial id PK
-        bigint projeto_id FK
-        varchar tipo_leitura "INICIAL | ATUAL"
-        numeric score_negocio "0.00 a 4.00"
-        numeric score_produto "0.00 a 4.00"
-        numeric score_time "0.00 a 4.00"
-        numeric score_receita "0.00 a 4.00"
-        timestamp data_avaliacao
-    }
-
-    HISTORICO_TRANSICOES {
-        bigserial id PK
-        bigint projeto_id FK
-        bigint usuario_id FK
-        varchar tipo_mudanca "STATUS_FUNIL ou TRL"
-        varchar valor_anterior
-        varchar valor_novo
-        timestamp data_mudanca
-    }
-
-    EVIDENCIAS {
-        bigserial id PK
-        bigint projeto_id FK
-        varchar nome_arquivo
-        varchar caminho_storage "URL do AWS S3"
-        varchar tipo_arquivo
-        timestamp data_upload
-    }
+    USUARIO ||--o{ PROJETO : participa
+    ACAO_MOBILIZACAO o|--o{ PROJETO : origina
+    ETAPA_KANBAN ||--o{ PROJETO : situa
+    ETAPA_KANBAN ||--o{ TRANSICAO_KANBAN : define
+    PROJETO ||--o{ QUALIFICACAO_DEMANDA : recebe
+    PROJETO ||--o{ CONSULTA_ESPECIALISTA : encaminha
+    CONSULTA_ESPECIALISTA o|--o{ PARECER_TECNICO : subsidia
+    PROJETO ||--o{ PARECER_TECNICO : recebe
+    PROJETO ||--o{ AVALIACAO_TRL : registra
+    TRANSICAO_KANBAN ||--o{ SOLICITACAO_TRANSICAO : governa
+    PROJETO ||--o{ SOLICITACAO_TRANSICAO : solicita
+    SOLICITACAO_TRANSICAO o|--o| MOVIMENTACAO_KANBAN : autoriza
+    PROJETO ||--o{ MOVIMENTACAO_KANBAN : audita
+    PROJETO ||--o{ ENTREGA_PROJETO : produz
+    ENTREGA_PROJETO ||--o{ VALIDACAO_ENTREGA : recebe
+    PROJETO ||--o{ EVIDENCIA : agrega
+    AVALIACAO_TRL ||--o{ EVIDENCIA_TRL : fundamenta
+    EVIDENCIA ||--o{ EVIDENCIA_TRL : associa
+    PARECER_TECNICO ||--o{ EVIDENCIA_PARECER : fundamenta
+    EVIDENCIA ||--o{ EVIDENCIA_PARECER : associa
+    SOLICITACAO_TRANSICAO ||--o{ EVIDENCIA_TRANSICAO : fundamenta
+    EVIDENCIA ||--o{ EVIDENCIA_TRANSICAO : associa
+    PROJETO ||--o{ SOLICITACAO_AVANCO : legado
+    PROJETO ||--o{ AVALIACAO_RADAR : preserva
+    PROJETO ||--o{ DELIBERACAO_HISTORICO : preserva
+    PROJETO ||--o{ HISTORICO_TRANSICOES : auditoria_legada
 ```
 
-### 6.2 Enumeradores
+As referências de autoria e responsabilidade para cada entidade aparecem nos campos listados a seguir; foram omitidas do diagrama para facilitar a leitura.
 
-Os enumeradores definem os **domínios fechados** do sistema — campos que só aceitam valores pré-definidos.
+### Entidades centrais
 
-| Enum | Valores | Onde é usado |
-|---|---|---|
-| `PerfilUsuario` | `DEMANDANTE`, `ANALISTA`, `COMITE`, `EXECUTIVO` | `Usuario.perfil` |
-| `ArenaTipo` | `EFICIENCIA_OPERACIONAL`, `NEGOCIOS_DIGITAIS`, `SEGURANCA_INTEGRADA`, `A_DEFINIR` | `Projeto.arena` |
-| `StatusFunil` | `IDEACAO`, `POC`, `MVP`, `CONCLUIDO`, `DESCONTINUADO` | `Projeto.statusFunil` |
-| `DecisaoTipo` | `APROVADO`, `PIVOTADO`, `REPROVADO` | `DeliberacaoHistorico.decisao` |
-| `TipoLeituraRadar` | `INICIAL`, `ATUAL` | `AvaliacaoRadar.tipoLeitura` |
-
-**Fluxo do Funil de Inovação:**
-
-```
-  ┌──────────┐     ┌──────────┐     ┌──────────┐     ┌──────────────┐
-  │ IDEAÇÃO  │────→│   POC    │────→│   MVP    │────→│  CONCLUÍDO   │
-  └──────────┘     └──────────┘     └──────────┘     └──────────────┘
-       │                │                │
-       │                │                │           ┌──────────────────┐
-       └────────────────┴────────────────┴──────────→│ DESCONTINUADO    │
-                   (via deliberação REPROVADO)       └──────────────────┘
-```
-
-### 6.3 Entidades JPA (Detalhamento)
-
-#### 📄 `Usuario.java`
-
-| Campo | Tipo Java | Coluna SQL | Observações |
-|---|---|---|---|
-| `id` | `Long` | `id BIGSERIAL PK` | Gerado automaticamente pelo banco |
-| `nome` | `String` | `nome VARCHAR(150)` | |
-| `email` | `String` | `email VARCHAR(200) UNIQUE` | Não pode repetir |
-| `senhaHash` | `String` | `senha_hash VARCHAR(255)` | Hash BCrypt, nunca texto puro |
-| `perfil` | `PerfilUsuario` | `perfil VARCHAR(30)` | Salvo como texto via `@Enumerated(STRING)` |
-| `ativo` | `Boolean` | `ativo BOOLEAN DEFAULT TRUE` | Soft delete (inativa sem apagar) |
-
-#### 📄 `Projeto.java` (Entidade Central)
-
-| Campo | Tipo Java | Coluna SQL | Observações |
-|---|---|---|---|
-| `id` | `Long` | `id BIGSERIAL PK` | |
-| `titulo` | `String` | `titulo VARCHAR(255)` | |
-| `descricaoDor` | `String` | `descricao_dor TEXT` | Texto longo |
-| `areaDemandanteId` | `Long` | `area_demandante_id BIGINT` | Identificador simples |
-| `responsavelPo` | `Usuario` | `responsavel_po_id BIGINT FK` | Relacionamento `@ManyToOne` |
-| `arena` | `ArenaTipo` | `arena VARCHAR(30)` | Enum |
-| `statusFunil` | `StatusFunil` | `status_funil VARCHAR(20)` | Default `IDEACAO` |
-| `trlAtual` | `Integer` | `trl_atual INTEGER` | 1 a 9, nunca regride |
-| `hipoteseSolucao` | `String` | `hipotese_solucao TEXT` | Pode ser atualizada em pivotamento |
-| `potencialLeiDoBem` | `Boolean` | `potencial_lei_do_bem BOOLEAN` | Sinalizado pela IA |
-| `dispendioEstimado` | `BigDecimal` | `dispendio_estimado NUMERIC(12,2)` | Visível apenas para COMITE/EXECUTIVO |
-| `criadoEm` | `LocalDateTime` | `criado_em TIMESTAMP` | Preenchido via `@PrePersist` |
-| `atualizadoEm` | `LocalDateTime` | `atualizado_em TIMESTAMP` | Atualizado via `@PreUpdate` |
-
-**Relacionamentos `@OneToMany` do Projeto:**
-
-| Lista | Entidade relacionada | Significado |
-|---|---|---|
-| `deliberacoes` | `DeliberacaoHistorico` | Decisões do Comitê |
-| `avaliacoesRadar` | `AvaliacaoRadar` | Notas do Radar ao longo do tempo |
-| `historicoTransicoes` | `HistoricoTransicoes` | Auditoria de mudanças de status/TRL |
-| `evidencias` | `Evidencia` | Arquivos anexados (referências S3) |
-
-#### 📄 `DeliberacaoHistorico.java`
-
-Registra as decisões formais do Comitê. Padrão *append-only* (apenas inserções, sem edição ou exclusão).
-
-| Campo | Tipo Java | Observações |
-|---|---|---|
-| `projeto` | `Projeto` | `@ManyToOne` — qual projeto foi avaliado |
-| `responsavel` | `Usuario` | `@ManyToOne` — quem tomou a decisão |
-| `decisao` | `DecisaoTipo` | `APROVADO`, `PIVOTADO` ou `REPROVADO` |
-| `justificativa` | `String` | Texto livre obrigatório |
-| `dataDecisao` | `LocalDateTime` | Preenchido via `@PrePersist` |
-
-#### 📄 `AvaliacaoRadar.java`
-
-Radar de Maturidade com 4 dimensões, notas de `0.00` a `4.00`.
-
-| Campo | Tipo Java | Observações |
-|---|---|---|
-| `tipoLeitura` | `TipoLeituraRadar` | `INICIAL` (criada com o projeto) ou `ATUAL` (manual) |
-| `scoreNegocio` | `BigDecimal` | `NUMERIC(3,2)` — ex: `3.50` |
-| `scoreProduto` | `BigDecimal` | |
-| `scoreTime` | `BigDecimal` | |
-| `scoreReceita` | `BigDecimal` | |
-
-#### 📄 `HistoricoTransicoes.java`
-
-Log de auditoria — registra **quem** mudou **o quê**, **de qual valor** para **qual valor**, e **quando**.
-
-| Campo | Tipo Java | Observações |
-|---|---|---|
-| `tipoMudanca` | `String` | `"STATUS_FUNIL"` ou `"TRL"` |
-| `valorAnterior` | `String` | Ex: `"IDEACAO"` ou `"3"` |
-| `valorNovo` | `String` | Ex: `"POC"` ou `"5"` |
-| `usuario` | `Usuario` | Extraído do JWT na requisição |
-
-#### 📄 `Evidencia.java`
-
-Referência a arquivos armazenados no AWS S3 (o arquivo **não** fica no banco).
-
-| Campo | Tipo Java | Observações |
-|---|---|---|
-| `nomeArquivo` | `String` | Nome original do upload |
-| `caminhoStorage` | `String` | URL completa do S3 |
-| `tipoArquivo` | `String` | MIME type (ex: `application/pdf`) |
-
----
-
-## 7. Repositórios (Acesso ao Banco)
-
-Cada entidade possui um Repository correspondente. Abaixo estão os **métodos personalizados** que adicionamos além dos herdados do `JpaRepository`:
-
-### `UsuarioRepository`
-
-```java
-Optional<Usuario> findByEmail(String email);     // Busca por email (login)
-boolean existsByEmail(String email);              // Verifica duplicata
-```
-
-### `ProjetoRepository`
-
-```java
-// Query JPQL personalizada com filtros opcionais e paginação
-@Query("SELECT p FROM Projeto p WHERE (:arena IS NULL OR p.arena = :arena) ...")
-Page<Projeto> findAllWithFilters(ArenaTipo arena, StatusFunil status, String busca, Pageable pageable);
-```
-
-> [!TIP]
-> **JPQL** (Java Persistence Query Language) é parecido com SQL, mas opera sobre **Entidades Java**, não sobre tabelas. Ex: `FROM Projeto p` se refere à classe `Projeto.java`, não à tabela `projetos`.
-
-### `DeliberacaoHistoricoRepository`
-
-```java
-List<DeliberacaoHistorico> findByProjetoIdOrderByDataDecisaoDesc(Long projetoId);
-```
-
-### `AvaliacaoRadarRepository`
-
-```java
-List<AvaliacaoRadar> findByProjetoIdOrderByDataAvaliacaoDesc(Long projetoId);
-Optional<AvaliacaoRadar> findByProjetoIdAndTipoLeitura(Long projetoId, TipoLeituraRadar tipoLeitura);
-```
-
-### `HistoricoTransicoesRepository`
-
-```java
-List<HistoricoTransicoes> findByProjetoIdOrderByDataMudancaDesc(Long projetoId);
-```
-
-### `EvidenciaRepository`
-
-```java
-List<Evidencia> findByProjetoIdOrderByDataUploadDesc(Long projetoId);
-```
-
-**Como o Spring monta a query a partir do nome do método:**
-
-```
-findByProjetoIdOrderByDataDecisaoDesc
-│      │          │       │          │
-│      │          │       │          └── DESC = ordem decrescente
-│      │          │       └── DataDecisao = coluna de ordenação
-│      │          └── OrderBy = cláusula ORDER BY
-│      └── ProjetoId = WHERE projeto_id = ?
-└── findBy = SELECT * FROM ...
-```
-
----
-
-## 8. Migration Flyway
-
-**Arquivo:** `src/main/resources/db/migration/V1__criar_tabelas_iniciais.sql`
-
-Este script cria **todas as 6 tabelas** do sistema, incluindo:
-
-- **Foreign Keys (FK):** Garantem integridade referencial (ex: não é possível criar um projeto com um `responsavel_po_id` que não existe na tabela `usuarios`).
-- **CHECK Constraints:** Validações no nível do banco (ex: `trl_atual BETWEEN 1 AND 9`).
-- **Índices:** Aceleram consultas frequentes (ex: busca por `email`, filtro por `arena`).
-
-> [!WARNING]
-> **Regra fundamental do Flyway:** Uma vez que uma migration foi executada, ela **NUNCA** deve ser alterada. Se precisar fazer qualquer mudança na estrutura do banco, crie uma **nova** migration (`V2__adicionar_coluna_x.sql`, `V3__...`, etc.).
-
----
-
-## 9. Glossário de Anotações
-
-Referência rápida de todas as anotações Java usadas no projeto:
-
-### Anotações JPA / Hibernate
-
-| Anotação | Significado |
+| Entidade | Dados e responsabilidade |
 |---|---|
-| `@Entity` | "Esta classe representa uma tabela no banco de dados" |
-| `@Table(name = "...")` | Define o nome real da tabela no PostgreSQL |
-| `@Id` | "Este campo é a Chave Primária (PK)" |
-| `@GeneratedValue(IDENTITY)` | "O banco gera o ID automaticamente (auto-increment)" |
-| `@Column(...)` | Configurações da coluna: nome, tamanho, nullable, unique |
-| `@Enumerated(STRING)` | "Salva o enum como texto no banco" (não como número) |
-| `@ManyToOne` | "Muitos registros desta tabela → Um registro de outra" |
-| `@OneToMany` | "Um registro desta tabela → Muitos registros de outra" |
-| `@JoinColumn` | "Esta é a coluna FK que faz a ligação entre tabelas" |
-| `@PrePersist` | "Execute este método antes do primeiro INSERT" |
-| `@PreUpdate` | "Execute este método antes de cada UPDATE" |
+| `Usuario` | Nome, email único, hash de senha, perfil e estado ativo. `senhaHash` é interno e nunca deve ser enviado ao front-end. |
+| `Projeto` | Título, problema, área, PO existente, Demandante, Analista responsável, arena, origem, ação de mobilização, etapa Kanban, TRL atual, hipótese, indicador Lei do Bem, dispêndio e datas. Responsáveis podem ser nulos em registros antigos ainda não atribuídos. |
+| `AcaoMobilizacao` | Nome e descrição de uma campanha, desafio, hackathon, residência ou mecanismo equivalente para demandas induzidas. |
+| `EtapaKanban` | Código e ID estáveis, nome, ordem, estado ativo, natureza terminal opcional e versão. Etapas referenciadas não são excluídas; podem ser inativadas. Código e natureza terminal são estáveis para não reinterpretar históricos. |
+| `TransicaoKanban` | Par único de origem e destino, exigência de governança, estado ativo e versão. A configuração inicial contém cinco etapas e seis transições governadas: três avanços normais e três possibilidades de descontinuação. |
 
-### Anotações Lombok
+### Avaliações e colaboração
 
-| Anotação | O que gera automaticamente |
+| Entidade | Dados e responsabilidade |
 |---|---|
-| `@Getter` | Métodos `get` para todos os campos |
-| `@Setter` | Métodos `set` para todos os campos |
-| `@NoArgsConstructor` | Construtor vazio `Usuario()` — obrigatório para JPA |
-| `@AllArgsConstructor` | Construtor com todos os campos |
-| `@EqualsAndHashCode(of = "id")` | Métodos `equals()` e `hashCode()` baseados no `id` |
+| `QualificacaoDemanda` | Autor, projeto, textos dos critérios de triagem, fundamentação, conclusão e data. Cada nova análise cria um registro histórico. |
+| `ConsultaEspecialista` | Projeto, solicitante, Especialista destinatário, questão e data do encaminhamento. |
+| `ParecerTecnico` | Autor, projeto, fundamentação, conclusão, data e consulta opcional ao Especialista. Consulta e parecer podem ter vários registros ao longo da jornada. |
+| `AvaliacaoTrl` | Projeto, autor, nível anterior, nível avaliado entre 1 e 9, justificativa e data. Uma redução é válida se justificada; avaliações passadas são imutáveis. |
+| `Evidencia` | Referência ao projeto, nome do arquivo, endereço de armazenamento, tipo e data. O binário fica fora do PostgreSQL. |
+| `EvidenciaTrl` | Associação entre avaliação de TRL e arquivo do mesmo projeto. |
+| `EvidenciaParecer` | Associação entre parecer técnico e arquivo do mesmo projeto. |
 
-### Anotações Spring
+### Kanban, decisão e validação
 
-| Anotação | Significado |
+| Entidade | Dados e responsabilidade |
 |---|---|
-| `@Repository` | Marca a interface como componente de acesso a dados |
-| `@Query("...")` | Define uma consulta JPQL personalizada |
-| `@Param("nome")` | Liga um parâmetro do método ao placeholder `:nome` da query |
+| `SolicitacaoTransicao` | Projeto, autor, transição configurada, origem/destino e exigência de governança congelados como fotografia da configuração, justificativa, situação, dados de encerramento e versão. Somente uma solicitação pendente por projeto é permitida. |
+| `MovimentacaoKanban` | Auditoria das mudanças novas: projeto, autor, origem/destino, justificativa e data; associa-se opcionalmente ao pedido aprovado. É a fonte do histórico novo do Kanban. |
+| `EvidenciaTransicao` | Associação entre pedido de transição e arquivo do mesmo projeto. Só pode ser criada enquanto o pedido está pendente. |
+| `EntregaProjeto` | Projeto, autor, descrição da entrega/MVP e data de submissão. |
+| `ValidacaoEntrega` | Projeto, entrega, Demandante, resultado, observações e data. Várias validações podem permanecer no histórico. |
 
----
+### Histórico e compatibilidade
 
-## 10. Próximos Passos
+| Entidade | Responsabilidade |
+|---|---|
+| `SolicitacaoAvanco` | Pedidos mistos de TRL/etapa da V2. Permanece somente para leitura, com dados e evidências preservados. Não participa do novo fluxo. |
+| `HistoricoTransicoes` | Preserva as auditorias da V1/V2. `MovimentacaoKanban` é a fonte de auditoria para movimentos do Kanban criados na V3 em diante; não duplicar um novo movimento nas duas tabelas. Avaliações de TRL são preservadas em `AvaliacaoTrl`. |
+| `DeliberacaoHistorico` | Preserva as decisões gerais existentes. Pareceres técnicos e solicitações de transição possuem entidades próprias no fluxo novo. |
+| `AvaliacaoRadar` | Mantém as leituras e escalas que já existiam. Não foi reinterpretada como qualificação nem convertida em pontuação de triagem. |
 
-A Fase 1 (Camada de Domínio) está concluída. As próximas etapas são:
+### Enums
 
-| Fase | Escopo | Status |
+| Enum | Valores |
+|---|---|
+| `PerfilUsuario` | `DEMANDANTE`, `ANALISTA`, `ESPECIALISTA` |
+| `ArenaTipo` | `EFICIENCIA_OPERACIONAL`, `NEGOCIOS_DIGITAIS`, `SEGURANCA_INTEGRADA`, `A_DEFINIR` |
+| `OrigemDemanda` | `ESPONTANEA`, `INDUZIDA` |
+| `TipoTerminal` | `CONCLUSAO`, `DESCONTINUACAO` |
+| `StatusSolicitacao` | `PENDENTE`, `APROVADA`, `REJEITADA`, `CANCELADA` |
+| `TipoMudanca` | `STATUS_FUNIL`, `TRL`; conserva os valores históricos da auditoria antiga |
+| `ResultadoValidacao` | `VALIDADA`, `VALIDADA_COM_RESSALVAS`, `NAO_VALIDADA` |
+| Enums preservados | `StatusFunil` (legado), `DecisaoTipo` e `TipoLeituraRadar` |
+
+Os rótulos finais de resultado de validação e as regras específicas para cada campanha ainda podem ser ajustados conforme a validação do cliente.
+
+## 6. Repositórios e consultas
+
+Cada entidade operacional tem um repositório Spring Data com consultas adequadas ao uso: consulta por projeto e paginação para históricos; fila por situação para solicitações; ordenação para etapas e transições. Métodos herdados permitem persistir registros e buscar por ID.
+
+| Entidade | Repositório |
+|---|---|
+| `AcaoMobilizacao` | `AcaoMobilizacaoRepository` |
+| `EtapaKanban` | `EtapaKanbanRepository` |
+| `TransicaoKanban` | `TransicaoKanbanRepository` |
+| `QualificacaoDemanda` | `QualificacaoDemandaRepository` |
+| `ConsultaEspecialista` | `ConsultaEspecialistaRepository` |
+| `ParecerTecnico` | `ParecerTecnicoRepository` |
+| `AvaliacaoTrl` | `AvaliacaoTrlRepository` |
+| `SolicitacaoTransicao` | `SolicitacaoTransicaoRepository` |
+| `MovimentacaoKanban` | `MovimentacaoKanbanRepository` |
+| `EntregaProjeto` | `EntregaProjetoRepository` |
+| `ValidacaoEntrega` | `ValidacaoEntregaRepository` |
+| `EvidenciaTrl` | `EvidenciaTrlRepository` |
+| `EvidenciaParecer` | `EvidenciaParecerRepository` |
+| `EvidenciaTransicao` | `EvidenciaTransicaoRepository` |
+
+Os três repositórios de associação de evidência são justificáveis quando a interface ou o serviço precisa paginar os arquivos vinculados a uma avaliação, parecer ou solicitação. Eles agora oferecem consultas tanto por projeto como pelo registro específico. A tabela de associação continua importante porque armazena e garante que o registro e a evidência pertencem ao mesmo projeto.
+
+`ProjetoRepository.findAllWithFilters` consulta globalmente com paginação e filtros opcionais de arena, etapa e texto de busca. Não há filtro obrigatório de proprietário. `HistoricoTransicoesRepository` e `SolicitacaoAvancoRepository` permanecem para os dados históricos; não devem ser usados como novos históricos ou fila de decisão.
+
+Um repository não precisa conter lógica de negócio. A validação de perfil e responsabilidade, a transação de fechamento de evidências, a autorização e a atualização atômica do projeto pertencem aos serviços futuros.
+
+## 7. Integridade e comportamento dos registros
+
+### Avaliação/parecer e conjunto de evidências
+
+A V3 tentava garantir a mesma transação usando `xmin` e `pg_current_xact_id()`. O teste isolado encontrou uma diferença com savepoint: uma linha criada dentro de subtransação pode ter um `xmin` diferente do ID da transação principal. A V4 remove essa comparação.
+
+Agora `AvaliacaoTrl` e `ParecerTecnico` têm o campo `evidenciasFechadas`. Um registro novo inicia aberto; a aplicação pode anexar evidências do mesmo projeto e então fechá-lo uma única vez. Um constraint trigger adiado verifica no commit que o registro está fechado. Depois do fechamento, não se pode editar ou excluir o registro nem adicionar, editar ou remover seus vínculos documentais. A relação fica imutável e o conjunto examinado fica definido.
+
+Essa sequência pode usar transações aninhadas e savepoints: os triggers consultam o estado de fechamento, não metadados internos da versão da linha. A camada de serviço ainda precisa executar a sequência completa sob `@Transactional`. A constraint adiada impede que uma avaliação/parecer aberto seja confirmado isoladamente no banco.
+
+### Preservação de história e concorrência
+
+Avaliações, pareceres, pedidos encerrados, validações, movimentações e vínculos documentais são registros históricos. `@Immutable` no Hibernate evita atualizações ORM em certas entidades; triggers e constraints PostgreSQL protegem escritas diretas para os casos críticos. Para os pais documentais de TRL/parecer, a V4 permite apenas a transição controlada de aberto para fechado.
+
+Associações e referências ao arquivo possuem chaves estrangeiras compostas com `projeto_id`, prevenindo que um arquivo de outro projeto seja usado em um parecer, avaliação, entrega ou pedido. Metadados de um arquivo já utilizado por uma referência histórica não podem ser alterados. O arquivo físico no S3 ainda depende de uma etapa futura.
+
+`@Version` em Projeto, EtapaKanban, TransicaoKanban e SolicitacaoTransicao detecta atualizações concorrentes pelo JPA. O serviço deve converter conflito em resposta compreensível e carregar o valor atual de novo. Escritas SQL diretas devem respeitar o número de versão.
+
+As constraints de origem garantem que `INDUZIDA` tenha ação de mobilização, `ESPONTANEA` não tenha uma, e origem nula represente legado sem informação. A constraint de CHECK deve testar também a presença dos campos: no PostgreSQL uma expressão CHECK que resulta em NULL passa.
+
+## 8. Migrações e dados existentes
+
+| Migration | Efeito |
+|---|---|
+| `V1__criar_tabelas_iniciais.sql` | Cria usuários, projetos, decisões, radar, auditoria e evidências iniciais. |
+| `V2__adicionar_solicitacoes_avanco.sql` | Introduz solicitações mistas de TRL/Kanban e referências complementares. |
+| `V3__evoluir_dominio_portfolio.sql` | Converte perfis; introduz origem, mobilização, etapas e transições configuráveis, qualificação, consultas, pareceres, avaliações TRL, validações e tabelas de associação; preserva solicitações antigas como legado. |
+| `V4__fechar_conjuntos_de_evidencias.sql` | Substitui a regra interna baseada em `xmin` pelo fechamento explícito e transacional de evidências de avaliações e pareceres. |
+
+V1, V2 e V3 permanecem imutadas. Em instalação nova, Flyway executa as quatro versões em sequência. Em um banco já migrado até V3, aplica somente V4.
+
+Os projetos existentes têm seu status convertido para a etapa correspondente. Os perfis COMITE/EXECUTIVO são convertidos como descrito na seção de usuários. A origem histórica fica nula, pois não há dados para inferi-la. Não são criadas avaliações de TRL retroativas. Pedidos antigos, pendentes ou encerrados, e suas referências são preservados e congelados fora do fluxo novo. A mudança de perfil é compatibilidade de dados, não confirmação de que cada usuário convertido já recebeu orientação ou treinamento.
+
+## 9. Fronteira entre banco e serviços
+
+| Regra | Camada responsável |
+|---|---|
+| TRL entre 1 e 9 e links de evidência no mesmo projeto | Banco (CHECK/FK) |
+| Avaliação/parecer com conjunto de evidências fechado no commit | Banco (constraint trigger V4) e sequência transacional no serviço |
+| Um pedido pendente de transição por projeto | Banco (índice parcial único) |
+| Snapshot do pedido consistente com uma transição ativa e governada | Banco na inserção do pedido |
+| Não sair de etapa terminal; não excluir etapa referenciada | Banco (triggers/FK) |
+| Leitura global autenticada para os três perfis | Ainda não implementado; segurança/serviço |
+| Usuário ativo, perfil, Demandante dono do problema e Analista atribuído | Ainda não implementado; segurança/serviço |
+| Criar demandas novas com origem explícita e validar perfis da mobilização | Ainda não implementado; serviço |
+| Atualizar TRL e projeto atomicamente, conferir nível anterior e autoria | Ainda não implementado; serviço transacional |
+| Aprovação movimenta o projeto e grava auditoria atomicamente | Ainda não implementado; serviço transacional |
+| Autorizar governança e impedir caminhos diretos | Ainda não implementado; segurança/serviço |
+| Limites e ordenação das páginas, contratos JSON e datas com fuso | Pendente de alinhamento da API |
+| Exposição de `dispendioEstimado` | Pendente de política financeira e DTOs |
+
+Os endpoints REST antigos e as propostas do guia do front-end não são contratos implementados. Devem ser revisados junto com DTOs e serviços antes de integrar o front-end.
+
+## 10. Conceitos importantes de persistência implementados
+
+- **Responsabilidades separadas:** qualificação, parecer técnico, avaliação de maturidade, pedido de governança, movimentação, entrega e validação contam histórias distintas; nenhuma tabela única tenta representar todos os processos.
+- **Fotografia histórica:** a solicitação de transição armazena origem, destino e exigência de governança que valiam quando foi solicitada. Editar a configuração mais tarde não altera o pedido antigo.
+- **Integridade referencial:** chaves estrangeiras ligam os registros e impedem associações entre projetos diferentes.
+- **Histórico append-only:** entradas encerradas preservam autoria e conteúdo; correções devem virar novos registros nos fluxos que são históricos.
+- **Controle de concorrência:** `@Version` ajuda a detectar quando uma segunda sessão está tentando salvar uma cópia antiga.
+- **Transação:** uma sequência relacionada deve ser confirmada por inteiro. Na V4, um parecer/avaliação e seus anexos só se tornam um conjunto válido quando é fechado antes do commit.
+- **Backfill conservador:** a migration converte o que pode ser determinado sem inventar origem, maturidade ou decisão para registros antigos.
+- **Persistência não é autorização:** um FK confirma que o usuário existe; não confirma que esse usuário tenha o perfil correto para a ação.
+
+## 11. Verificação
+
+A execução final desta revisão usou `mvnw.cmd -B clean verify`, Java 21.0.12.1 e PostgreSQL 16.11 em um container descartável local, com a variável `SIGESPIN_TEST_DB_URL` apontando exclusivamente para esse banco. Resultado: `BUILD SUCCESS`, quatro testes executados, zero falhas, zero erros e zero ignorados.
+
+A suíte cobre a instalação vazia e aplicação sequencial de V1–V4; migração de dados existentes de V2 para V4 preservando solicitações e histórico legado; validação de mapeamento Hibernate/JPA, inicialização dos 21 repositórios, consultas globais e concorrência otimista; constraints de relações entre projetos, transições de Kanban e concorrência de solicitações; e abertura, anexação, fechamento e imutabilidade dos conjuntos de evidências.
+
+O primeiro ciclo revelou um conflito entre o gatilho histórico da V3 e o fechamento documental permitido na V4. A V4 foi ajustada para substituir aqueles gatilhos pelos controles documentais específicos; a suíte completa passou após recriar o banco de teste vazio. Testes não devem apontar para banco corporativo ou compartilhado.
+
+Essa validação confirma a camada de domínio, migration e persistência prevista para esta fase; não comprova fluxos REST, serviços transacionais de negócio, permissões por perfil, JWT, IA ou armazenamento S3, ainda não implementados.
+
+## 12. Fases do projeto
+
+| Fase | Escopo | Situação |
 |---|---|---|
-| ✅ Fase 1 | Entidades, Enums, Repositórios, Migration Flyway | **Concluída** |
-| ⬜ Fase 2 | Spring Security + JWT (Autenticação e RBAC) | Pendente |
-| ⬜ Fase 3 | Camada de Serviço (Regras de Negócio) | Pendente |
-| ⬜ Fase 4 | Camada de Controller (Endpoints REST) | Pendente |
-| ⬜ Fase 5 | Integração com Google Gemini (IA) | Pendente |
-| ⬜ Fase 6 | Upload de Evidências (AWS S3) | Pendente |
-| ⬜ Fase 7 | Dashboard de Métricas | Pendente |
+| **Fase 1 — Camada de domínio e persistência** | Entidades, enums, repositórios Spring Data, migrations Flyway, constraints de integridade e testes de persistência. | **Concluída e validada** com Java 21 e PostgreSQL 16 descartável. |
+| **Fase 2 — Segurança e autenticação** | Spring Security, autenticação JWT, ciclo de login e autorização dos perfis Demandante, Analista e Especialista, mantendo a consulta global do portfólio. | Pendente. |
+| **Fase 3 — Serviços e regras de negócio** | Serviços transacionais para intake, qualificação, pareceres, evidências, avaliação de TRL, fluxo de governança/Kanban, entregas e validação do Demandante. | Pendente. |
+| **Fase 4 — API REST** | Controllers, DTOs, validação de entrada, paginação, tratamento uniforme de erros e contratos definidos com o front-end. | Pendente. |
+| **Fase 5 — Integração com IA** | Integração do intake com o provedor de IA, validação defensiva das respostas, timeouts e tratamento de indisponibilidade. | Pendente. |
+| **Fase 6 — Arquivos e evidências** | Upload e consulta segura de arquivos em armazenamento externo, vínculo com o domínio e preservação de autoria e histórico. | Pendente. |
+| **Fase 7 — Dashboard e métricas** | Consultas agregadas do portfólio para indicadores de gestão, acompanhamento e apoio a decisões conforme a alçada do usuário. | Pendente. |
 
----
+As fases 2 a 7 descrevem o planejamento, não funcionalidades já entregues. A ordem pode ser ajustada conforme dependências técnicas e priorização do cliente; especialmente, os serviços da Fase 3 devem estabelecer as regras transacionais consumidas pela API da Fase 4.
 
-> **Documento gerado em:** 05/10/2026  
-> **Referência:** [SIGES-PIN Master Spec Back-end](./SIGES-PIN_%20Master%20Spec%20Back-end.md)
+Este arquivo é o documento canônico da Fase 1. Ele substitui as documentações anteriores e reúne contexto do projeto, roadmap das fases, decisões, conceitos implementados, entidades, migrations e limitações atuais.

@@ -1,7 +1,7 @@
 package br.com.bbts.sigespin.model.entity;
 
 import br.com.bbts.sigespin.model.enums.ArenaTipo;
-import br.com.bbts.sigespin.model.enums.StatusFunil;
+import br.com.bbts.sigespin.model.enums.OrigemDemanda;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -52,9 +52,17 @@ public class Projeto {
     @Column(nullable = false, length = 30)
     private ArenaTipo arena;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "etapa_id", nullable = false)
+    private EtapaKanban etapa;
+
     @Enumerated(EnumType.STRING)
-    @Column(name = "status_funil", nullable = false, length = 20)
-    private StatusFunil statusFunil = StatusFunil.IDEACAO;
+    @Column(length = 20)
+    private OrigemDemanda origem;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "acao_mobilizacao_id")
+    private AcaoMobilizacao acaoMobilizacao;
 
     @Column(name = "trl_atual", nullable = false)
     private Integer trlAtual;
@@ -78,13 +86,13 @@ public class Projeto {
     @OneToMany(mappedBy = "projeto")
     private List<DeliberacaoHistorico> deliberacoes = new ArrayList<>();
 
-    @OneToMany(mappedBy = "projeto", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(mappedBy = "projeto")
     private List<AvaliacaoRadar> avaliacoesRadar = new ArrayList<>();
 
     @OneToMany(mappedBy = "projeto")
     private List<HistoricoTransicoes> historicoTransicoes = new ArrayList<>();
 
-    @OneToMany(mappedBy = "projeto", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(mappedBy = "projeto")
     private List<Evidencia> evidencias = new ArrayList<>();
 
     @OneToMany(mappedBy = "projeto")
