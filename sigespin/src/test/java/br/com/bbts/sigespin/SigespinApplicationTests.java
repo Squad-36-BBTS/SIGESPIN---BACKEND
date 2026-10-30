@@ -15,6 +15,7 @@ import static org.junit.jupiter.api.Assertions.*;
  "spring.datasource.url=${SIGESPIN_TEST_DB_URL}",
  "spring.datasource.username=${SIGESPIN_TEST_DB_USER:postgres}",
  "spring.datasource.password=${SIGESPIN_TEST_DB_PASSWORD:}",
+ "app.security.jwt.secret=local-test-secret-key-that-is-long-enough-32-bytes",
  "spring.jpa.hibernate.ddl-auto=validate"})
 @EnabledIfEnvironmentVariable(named="SIGESPIN_TEST_DB_URL", matches=".+")
 class SigespinApplicationTests {

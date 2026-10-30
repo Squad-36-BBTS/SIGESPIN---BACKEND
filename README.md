@@ -20,7 +20,7 @@ Os serviços, endpoints, integração com Gemini e AWS S3, dashboard e seguranç
 
 ## 🏛️ Arquitetura
 
-- **Camada de Domínio** – Entidades JPA, Enums, Repositórios e migrations Flyway (detalhada em [`DOCUMENTACAO_FASE1_DOMINIO.md`](./sigespin/DOCUMENTACAO_FASE1_DOMINIO.md)).
+- **Camada de Domínio** – Entidades JPA, Enums, Repositórios e migrations Flyway.
 - **Camada de Serviço** – (a ser implementada) regras de negócio, validações e integração com a IA.
 - **Camada de API** – (a ser implementada) controllers REST e DTOs, conforme contratos a serem alinhados.
 - **Persistência** – PostgreSQL 16+ hospedado no Supabase, versionado com Flyway.
@@ -70,7 +70,7 @@ Os testes unitários e de integração estão localizados em `src/test/java`.  P
 
 ## 📚 Documentação Técnica
 
-O documento canônico desta etapa é [`DOCUMENTACAO_FASE1_DOMINIO.md`](./sigespin/DOCUMENTACAO_FASE1_DOMINIO.md). Reúne o contexto do projeto, conceitos implementados, modelo de domínio, regras, migrations, validações e pendências para as próximas camadas.
+As documentações técnicas detalhadas das fases são mantidas em cópia local, fora deste repositório.
 
 ## 🤝 Contribuição
 
