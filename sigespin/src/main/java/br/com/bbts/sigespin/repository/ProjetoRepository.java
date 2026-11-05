@@ -13,6 +13,11 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface ProjetoRepository extends JpaRepository<Projeto, Long> {
 
+    // Serializa avaliações do mesmo projeto para registrar corretamente o nível anterior.
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT p FROM Projeto p WHERE p.id = :id")
+    java.util.Optional<Projeto> findByIdParaAtualizacao(@Param("id") Long id);
+
     @Query("""
             SELECT p FROM Projeto p
             WHERE (:arena IS NULL OR p.arena = :arena)
