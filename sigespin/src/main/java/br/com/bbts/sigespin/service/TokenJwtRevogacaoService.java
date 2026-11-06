@@ -1,6 +1,6 @@
 package br.com.bbts.sigespin.service;
 
-import br.com.bbts.sigespin.repository.TokenJwtRevogadoRepository;
+import br.com.bbts.sigespin.repository.seguranca.TokenJwtRevogadoRepository;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

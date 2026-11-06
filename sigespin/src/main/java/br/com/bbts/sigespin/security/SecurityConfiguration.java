@@ -1,7 +1,7 @@
 package br.com.bbts.sigespin.security;
 
-import br.com.bbts.sigespin.repository.TokenJwtRevogadoRepository;
-import br.com.bbts.sigespin.repository.UsuarioRepository;
+import br.com.bbts.sigespin.repository.seguranca.TokenJwtRevogadoRepository;
+import br.com.bbts.sigespin.repository.seguranca.UsuarioRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;

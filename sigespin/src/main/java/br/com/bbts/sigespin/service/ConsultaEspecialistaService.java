@@ -3,9 +3,9 @@ package br.com.bbts.sigespin.service;
 import br.com.bbts.sigespin.dto.consulta.*;
 import br.com.bbts.sigespin.model.entity.ConsultaEspecialista;
 import br.com.bbts.sigespin.model.enums.PerfilUsuario;
-import br.com.bbts.sigespin.repository.ConsultaEspecialistaRepository;
-import br.com.bbts.sigespin.repository.ProjetoRepository;
-import br.com.bbts.sigespin.repository.UsuarioRepository;
+import br.com.bbts.sigespin.repository.analise.ConsultaEspecialistaRepository;
+import br.com.bbts.sigespin.repository.portfolio.ProjetoRepository;
+import br.com.bbts.sigespin.repository.seguranca.UsuarioRepository;
 import br.com.bbts.sigespin.security.UsuarioAtualService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
@@ -39,8 +39,8 @@ public class ConsultaEspecialistaService {
     public ConsultaRegistradaResponse consultar(@NotNull @Positive Long projetoId,
             @NotNull @Valid ConsultarEspecialistaRequest entrada) {
         var solicitante = usuarioAtual.exigirPerfil(PerfilUsuario.ANALISTA);
-        var projeto = projetos.findById(projetoId)
-                .orElseThrow(() -> new RegraNegocioException("Projeto não encontrado."));
+        var projeto = projetos.findAtivoParaAtualizacao(projetoId)
+                .orElseThrow(() -> new RegraNegocioException("Projeto não encontrado ou arquivado."));
         var especialista = usuarios.findById(entrada.especialistaId())
                 .orElseThrow(() -> new RegraNegocioException("Especialista não encontrado."));
         if (!Boolean.TRUE.equals(especialista.getAtivo())

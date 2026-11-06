@@ -2,7 +2,8 @@ package br.com.bbts.sigespin;
 
 import br.com.bbts.sigespin.model.entity.*;
 import br.com.bbts.sigespin.model.enums.*;
-import br.com.bbts.sigespin.repository.*;
+import br.com.bbts.sigespin.repository.kanban.EtapaKanbanRepository;
+import br.com.bbts.sigespin.repository.portfolio.ProjetoRepository;
 import jakarta.persistence.*;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;

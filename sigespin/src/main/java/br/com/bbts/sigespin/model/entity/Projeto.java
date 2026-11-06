@@ -48,6 +48,19 @@ public class Projeto {
     @Column(nullable = false)
     private Long versao;
 
+    @Column(nullable = false)
+    private Boolean arquivado = false;
+
+    @Column(name = "arquivado_em")
+    private LocalDateTime arquivadoEm;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "arquivado_por_id")
+    private Usuario arquivadoPor;
+
+    @Column(name = "motivo_arquivamento", columnDefinition = "TEXT")
+    private String motivoArquivamento;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 30)
     private ArenaTipo arena;

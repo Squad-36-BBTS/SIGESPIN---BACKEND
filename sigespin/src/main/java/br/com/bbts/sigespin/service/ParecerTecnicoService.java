@@ -3,7 +3,9 @@ package br.com.bbts.sigespin.service;
 import br.com.bbts.sigespin.dto.parecer.*;
 import br.com.bbts.sigespin.model.entity.*;
 import br.com.bbts.sigespin.model.enums.PerfilUsuario;
-import br.com.bbts.sigespin.repository.*;
+import br.com.bbts.sigespin.repository.analise.ConsultaEspecialistaRepository;
+import br.com.bbts.sigespin.repository.analise.ParecerTecnicoRepository;
+import br.com.bbts.sigespin.repository.portfolio.ProjetoRepository;
 import br.com.bbts.sigespin.security.UsuarioAtualService;
 import jakarta.persistence.EntityManager;
 import jakarta.validation.Valid;
@@ -43,8 +45,8 @@ public class ParecerTecnicoService {
     public ParecerRegistradoResponse registrar(@NotNull @Positive Long projetoId,
             @NotNull @Valid RegistrarParecerRequest entrada) {
         var autor = usuarioAtual.exigirPerfil(PerfilUsuario.ESPECIALISTA);
-        var projeto = projetos.findById(projetoId)
-                .orElseThrow(() -> new RegraNegocioException("Projeto não encontrado."));
+        var projeto = projetos.findAtivoParaAtualizacao(projetoId)
+                .orElseThrow(() -> new RegraNegocioException("Projeto não encontrado ou arquivado."));
         ConsultaEspecialista consulta = null;
         if (entrada.consultaId() != null) {
             consulta = consultas.findById(entrada.consultaId())

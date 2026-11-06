@@ -1,7 +1,7 @@
 package br.com.bbts.sigespin.service;
 
 import br.com.bbts.sigespin.model.entity.Evidencia;
-import br.com.bbts.sigespin.repository.EvidenciaRepository;
+import br.com.bbts.sigespin.repository.evidencia.EvidenciaRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;

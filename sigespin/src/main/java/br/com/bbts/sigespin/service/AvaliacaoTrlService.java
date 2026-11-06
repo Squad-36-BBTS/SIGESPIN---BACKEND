@@ -3,7 +3,8 @@ package br.com.bbts.sigespin.service;
 import br.com.bbts.sigespin.dto.trl.*;
 import br.com.bbts.sigespin.model.entity.*;
 import br.com.bbts.sigespin.model.enums.PerfilUsuario;
-import br.com.bbts.sigespin.repository.*;
+import br.com.bbts.sigespin.repository.analise.AvaliacaoTrlRepository;
+import br.com.bbts.sigespin.repository.portfolio.ProjetoRepository;
 import br.com.bbts.sigespin.security.UsuarioAtualService;
 import jakarta.persistence.EntityManager;
 import jakarta.validation.Valid;
@@ -40,8 +41,8 @@ public class AvaliacaoTrlService {
             @NotNull @Valid RegistrarAvaliacaoTrlRequest entrada) {
         var autor = usuarioAtual.exigirUmDosPerfis(PerfilUsuario.ANALISTA, PerfilUsuario.ESPECIALISTA);
         // O bloqueio dura até o commit: outra avaliação aguarda e lê o nível já atualizado.
-        var projeto = projetos.findByIdParaAtualizacao(projetoId)
-                .orElseThrow(() -> new RegraNegocioException("Projeto não encontrado."));
+        var projeto = projetos.findAtivoParaAtualizacao(projetoId)
+                .orElseThrow(() -> new RegraNegocioException("Projeto não encontrado ou arquivado."));
         var evidencias = documentos.carregarDoProjeto(projetoId, entrada.evidenciaIds());
 
         var avaliacao = new AvaliacaoTrl();

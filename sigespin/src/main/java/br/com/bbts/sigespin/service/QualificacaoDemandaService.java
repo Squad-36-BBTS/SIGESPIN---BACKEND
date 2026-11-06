@@ -3,8 +3,8 @@ package br.com.bbts.sigespin.service;
 import br.com.bbts.sigespin.dto.qualificacao.*;
 import br.com.bbts.sigespin.model.entity.QualificacaoDemanda;
 import br.com.bbts.sigespin.model.enums.PerfilUsuario;
-import br.com.bbts.sigespin.repository.ProjetoRepository;
-import br.com.bbts.sigespin.repository.QualificacaoDemandaRepository;
+import br.com.bbts.sigespin.repository.portfolio.ProjetoRepository;
+import br.com.bbts.sigespin.repository.analise.QualificacaoDemandaRepository;
 import br.com.bbts.sigespin.security.UsuarioAtualService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
@@ -36,8 +36,8 @@ public class QualificacaoDemandaService {
     public QualificacaoRegistradaResponse registrar(@NotNull @Positive Long projetoId,
             @NotNull @Valid RegistrarQualificacaoRequest entrada) {
         var autor = usuarioAtual.exigirPerfil(PerfilUsuario.ANALISTA);
-        var projeto = projetos.findById(projetoId)
-                .orElseThrow(() -> new RegraNegocioException("Projeto não encontrado."));
+        var projeto = projetos.findAtivoParaAtualizacao(projetoId)
+                .orElseThrow(() -> new RegraNegocioException("Projeto não encontrado ou arquivado."));
 
         var qualificacao = new QualificacaoDemanda();
         qualificacao.setProjeto(projeto);

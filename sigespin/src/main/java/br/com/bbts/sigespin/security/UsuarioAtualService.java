@@ -2,7 +2,7 @@ package br.com.bbts.sigespin.security;
 
 import br.com.bbts.sigespin.model.entity.Usuario;
 import br.com.bbts.sigespin.model.enums.PerfilUsuario;
-import br.com.bbts.sigespin.repository.UsuarioRepository;
+import br.com.bbts.sigespin.repository.seguranca.UsuarioRepository;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
