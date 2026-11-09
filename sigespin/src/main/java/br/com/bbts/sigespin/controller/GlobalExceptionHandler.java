@@ -1,6 +1,7 @@
 package br.com.bbts.sigespin.controller;
 
 import br.com.bbts.sigespin.exception.ConflitoEstadoException;
+import br.com.bbts.sigespin.exception.IaIndisponivelException;
 import br.com.bbts.sigespin.exception.RecursoNaoEncontradoException;
 import br.com.bbts.sigespin.exception.ServicoIndisponivelException;
 import br.com.bbts.sigespin.security.ApiErroResponse;
@@ -90,6 +91,17 @@ public class GlobalExceptionHandler {
                 HttpStatus.CONFLICT.value(),
                 "CONFLITO_CONCORRENCIA",
                 "O registro foi alterado por outra operação concorrente. Recarregue e tente novamente.",
+                List.of()
+        ));
+    }
+
+    @ExceptionHandler(IaIndisponivelException.class)
+    public ResponseEntity<ApiErroResponse> handleIaIndisponivel(IaIndisponivelException ex) {
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(new ApiErroResponse(
+                Instant.now(),
+                HttpStatus.SERVICE_UNAVAILABLE.value(),
+                "IA_INDISPONIVEL",
+                "A sugestão da IA está indisponível. Preencha os campos manualmente.",
                 List.of()
         ));
     }
