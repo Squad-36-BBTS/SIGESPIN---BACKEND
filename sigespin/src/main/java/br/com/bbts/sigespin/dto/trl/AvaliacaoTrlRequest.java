@@ -1,9 +1,7 @@
 package br.com.bbts.sigespin.dto.trl;
 
-import jakarta.validation.constraints.Max;
-import jakarta.validation.constraints.Min;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
+import com.fasterxml.jackson.annotation.JsonAlias;
+import jakarta.validation.constraints.*;
 
 import java.util.List;
 
@@ -16,5 +14,5 @@ public record AvaliacaoTrlRequest(
         @NotBlank(message = "A justificativa da avaliação de TRL é obrigatória.")
         String justificativa,
 
-        List<Long> evidenciasIds
+        @JsonAlias("evidenciaIds") @NotEmpty List<@NotNull @Positive Long> evidenciasIds
 ) { }

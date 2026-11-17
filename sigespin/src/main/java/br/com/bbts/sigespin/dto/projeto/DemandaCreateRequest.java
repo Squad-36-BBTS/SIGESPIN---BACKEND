@@ -2,10 +2,7 @@ package br.com.bbts.sigespin.dto.projeto;
 
 import br.com.bbts.sigespin.model.enums.ArenaTipo;
 import br.com.bbts.sigespin.model.enums.OrigemDemanda;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.PositiveOrZero;
-import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.*;
 
 import java.math.BigDecimal;
 
@@ -19,20 +16,21 @@ public record DemandaCreateRequest(
         String descricaoDor,
 
         @NotNull(message = "O identificador da área demandante é obrigatório.")
-        Long areaDemandanteId,
+        @Positive Long areaDemandanteId,
 
-        @NotNull(message = "A arena estratégica é obrigatória.")
         ArenaTipo arena,
 
         @NotNull(message = "A origem da demanda é obrigatória.")
         OrigemDemanda origem,
 
-        Long acaoMobilizacaoId,
+        @Positive Long acaoMobilizacaoId,
 
         String hipoteseSolucao,
 
         Boolean potencialLeiDoBem,
 
         @PositiveOrZero(message = "O dispêndio estimado não pode ser negativo.")
-        BigDecimal dispendioEstimado
+        BigDecimal dispendioEstimado,
+
+        @NotNull @Min(1) @Max(9) Integer trlInicialDeclarado
 ) { }

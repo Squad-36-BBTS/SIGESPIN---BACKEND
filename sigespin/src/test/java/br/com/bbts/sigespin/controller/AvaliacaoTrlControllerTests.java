@@ -83,7 +83,7 @@ class AvaliacaoTrlControllerTests {
                         .content(objectMapper.writeValueAsString(requestInvalido)))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.codigo").value("VALIDACAO_FALHOU"))
-                .andExpect(jsonPath("$.detalhes[0]").value(org.hamcrest.Matchers.containsString("O nível TRL mínimo é 1")));
+                .andExpect(jsonPath("$.detalhes").value(org.hamcrest.Matchers.hasItem(org.hamcrest.Matchers.containsString("O nível TRL mínimo é 1"))));
     }
 
     @Test
@@ -100,7 +100,7 @@ class AvaliacaoTrlControllerTests {
                         .content(objectMapper.writeValueAsString(requestInvalido)))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.codigo").value("VALIDACAO_FALHOU"))
-                .andExpect(jsonPath("$.detalhes[0]").value(org.hamcrest.Matchers.containsString("O nível TRL máximo é 9")));
+                .andExpect(jsonPath("$.detalhes").value(org.hamcrest.Matchers.hasItem(org.hamcrest.Matchers.containsString("O nível TRL máximo é 9"))));
     }
 
     @Test

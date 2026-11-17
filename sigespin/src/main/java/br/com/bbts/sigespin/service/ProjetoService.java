@@ -13,7 +13,7 @@ import org.springframework.data.domain.Pageable;
  */
 public interface ProjetoService {
 
-    Page<ProjetoResponse> listarProjetos(ArenaTipo arena, Long etapaId, String busca, Pageable pageable);
+    Page<ProjetoResponse> listarProjetos(ArenaTipo arena, Long etapaId, String busca, Boolean arquivado, Pageable pageable);
 
     ProjetoDetalheResponse buscarPorId(Long id);
 

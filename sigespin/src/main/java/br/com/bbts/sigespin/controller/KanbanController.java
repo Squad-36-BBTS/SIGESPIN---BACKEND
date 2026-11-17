@@ -1,17 +1,19 @@
 package br.com.bbts.sigespin.controller;
 
 import br.com.bbts.sigespin.dto.comum.PaginaResponse;
+import br.com.bbts.sigespin.dto.kanban.MovimentarProjetoRequest;
+import br.com.bbts.sigespin.dto.kanban.MovimentacaoRegistradaResponse;
+import br.com.bbts.sigespin.dto.kanban.CancelarGovernancaRequest;
+import br.com.bbts.sigespin.dto.kanban.SolicitacaoGovernancaResponse;
 import br.com.bbts.sigespin.dto.kanban.DecisaoTransicaoRequest;
 import br.com.bbts.sigespin.dto.kanban.EtapaKanbanResponse;
 import br.com.bbts.sigespin.dto.kanban.MovimentacaoKanbanResponse;
 import br.com.bbts.sigespin.dto.kanban.SolicitacaoTransicaoRequest;
 import br.com.bbts.sigespin.dto.kanban.SolicitacaoTransicaoResponse;
 import br.com.bbts.sigespin.dto.kanban.TransicaoKanbanResponse;
-import br.com.bbts.sigespin.exception.ServicoIndisponivelException;
 import br.com.bbts.sigespin.security.UsuarioPrincipal;
 import br.com.bbts.sigespin.service.KanbanService;
 import jakarta.validation.Valid;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -35,27 +37,20 @@ public class KanbanController {
 
     private final KanbanService kanbanService;
 
-    public KanbanController(@Autowired(required = false) KanbanService kanbanService) {
+    public KanbanController(KanbanService kanbanService) {
         this.kanbanService = kanbanService;
-    }
-
-    private KanbanService obterServico() {
-        if (this.kanbanService == null) {
-            throw new ServicoIndisponivelException("O serviço de governança e Kanban da Fase 3 ainda não foi integrado.");
-        }
-        return this.kanbanService;
     }
 
     @GetMapping("/api/kanban/etapas")
     @PreAuthorize("isAuthenticated()")
     public List<EtapaKanbanResponse> listarEtapas() {
-        return obterServico().listarEtapasAtivas();
+        return kanbanService.listarEtapasAtivas();
     }
 
     @GetMapping("/api/kanban/transicoes")
     @PreAuthorize("isAuthenticated()")
     public List<TransicaoKanbanResponse> listarTransicoes(@RequestParam("origemId") Long origemId) {
-        return obterServico().listarTransicoesPorOrigem(origemId);
+        return kanbanService.listarTransicoesPorOrigem(origemId);
     }
 
     @GetMapping("/api/projetos/{projetoId}/solicitacoes-transicao")
@@ -64,7 +59,7 @@ public class KanbanController {
             @PathVariable("projetoId") Long projetoId,
             Pageable pageable) {
         Pageable seguro = PaginacaoUtils.ajustarLimite(pageable);
-        return PaginaResponse.de(obterServico().listarSolicitacoesPorProjeto(projetoId, seguro));
+        return PaginaResponse.de(kanbanService.listarSolicitacoesPorProjeto(projetoId, seguro));
     }
 
     @PostMapping("/api/projetos/{projetoId}/solicitacoes-transicao")
@@ -74,7 +69,7 @@ public class KanbanController {
             @Valid @RequestBody SolicitacaoTransicaoRequest request,
             @AuthenticationPrincipal UsuarioPrincipal principal) {
         Long solicitanteId = principal != null && principal.getUsuario() != null ? principal.getUsuario().getId() : null;
-        SolicitacaoTransicaoResponse criada = obterServico().proporTransicao(projetoId, request, solicitanteId);
+        SolicitacaoTransicaoResponse criada = kanbanService.proporTransicao(projetoId, request, solicitanteId);
 
         URI location = ServletUriComponentsBuilder.fromCurrentRequest()
                 .path("/{id}")
@@ -91,7 +86,7 @@ public class KanbanController {
             @Valid @RequestBody DecisaoTransicaoRequest request,
             @AuthenticationPrincipal UsuarioPrincipal principal) {
         Long responsavelId = principal != null && principal.getUsuario() != null ? principal.getUsuario().getId() : null;
-        SolicitacaoTransicaoResponse decidida = obterServico().decidirSolicitacao(id, request, responsavelId);
+        SolicitacaoTransicaoResponse decidida = kanbanService.decidirSolicitacao(id, request, responsavelId);
         return ResponseEntity.ok(decidida);
     }
 
@@ -101,6 +96,22 @@ public class KanbanController {
             @PathVariable("projetoId") Long projetoId,
             Pageable pageable) {
         Pageable seguro = PaginacaoUtils.ajustarLimite(pageable);
-        return PaginaResponse.de(obterServico().listarMovimentacoesPorProjeto(projetoId, seguro));
+        return PaginaResponse.de(kanbanService.listarMovimentacoesPorProjeto(projetoId, seguro));
+    }
+
+    @PostMapping("/api/projetos/{projetoId}/movimentacoes")
+    @PreAuthorize("hasAnyRole('ANALISTA', 'ESPECIALISTA')")
+    public ResponseEntity<MovimentacaoRegistradaResponse> movimentar(@PathVariable Long projetoId,
+            @Valid @RequestBody MovimentarProjetoRequest entrada) {
+        var criada = kanbanService.movimentar(projetoId, entrada);
+        var location = ServletUriComponentsBuilder.fromCurrentRequest().path("/{id}").buildAndExpand(criada.id()).toUri();
+        return ResponseEntity.created(location).body(criada);
+    }
+
+    @PostMapping("/api/kanban/solicitacoes-transicao/{id}/cancelamento")
+    @PreAuthorize("hasAnyRole('ANALISTA', 'ESPECIALISTA')")
+    public SolicitacaoGovernancaResponse cancelar(@PathVariable Long id,
+            @Valid @RequestBody CancelarGovernancaRequest entrada) {
+        return kanbanService.cancelar(id, entrada);
     }
 }

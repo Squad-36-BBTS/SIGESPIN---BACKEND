@@ -1,17 +1,87 @@
 package br.com.bbts.sigespin.service;
 
-import br.com.bbts.sigespin.dto.parecer.ConsultaEspecialistaRequest;
 import br.com.bbts.sigespin.dto.parecer.ConsultaEspecialistaResponse;
+import br.com.bbts.sigespin.dto.parecer.ConsultaEspecialistaRequest;
+import br.com.bbts.sigespin.exception.RecursoNaoEncontradoException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
-/**
- * Contrato de serviço para consultas encaminhadas a especialistas.
- * As regras de negócio transacionais e persistência são de responsabilidade da Fase 3.
- */
-public interface ConsultaEspecialistaService {
+import br.com.bbts.sigespin.dto.consulta.*;
+import br.com.bbts.sigespin.model.entity.ConsultaEspecialista;
+import br.com.bbts.sigespin.model.enums.PerfilUsuario;
+import br.com.bbts.sigespin.repository.analise.ConsultaEspecialistaRepository;
+import br.com.bbts.sigespin.repository.portfolio.ProjetoRepository;
+import br.com.bbts.sigespin.repository.seguranca.UsuarioRepository;
+import br.com.bbts.sigespin.security.UsuarioAtualService;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.validation.annotation.Validated;
 
-    Page<ConsultaEspecialistaResponse> listarPorProjeto(Long projetoId, Pageable pageable);
+import java.time.LocalDateTime;
 
-    ConsultaEspecialistaResponse encaminharConsulta(Long projetoId, ConsultaEspecialistaRequest request, Long solicitanteId);
+@Service
+@Validated
+public class ConsultaEspecialistaService {
+    private final ProjetoRepository projetos;
+    private final UsuarioRepository usuarios;
+    private final ConsultaEspecialistaRepository consultas;
+    private final UsuarioAtualService usuarioAtual;
+
+    public ConsultaEspecialistaService(ProjetoRepository projetos, UsuarioRepository usuarios,
+            ConsultaEspecialistaRepository consultas, UsuarioAtualService usuarioAtual) {
+        this.projetos = projetos;
+        this.usuarios = usuarios;
+        this.consultas = consultas;
+        this.usuarioAtual = usuarioAtual;
+    }
+
+    /** Encaminha a questão sem criar parecer automático ou exigir qualificação prévia. */
+    @Transactional
+    @PreAuthorize("hasRole('ANALISTA')")
+    public ConsultaRegistradaResponse consultar(@NotNull @Positive Long projetoId,
+            @NotNull @Valid ConsultarEspecialistaRequest entrada) {
+        var solicitante = usuarioAtual.exigirPerfil(PerfilUsuario.ANALISTA);
+        var projeto = projetos.findAtivoParaAtualizacao(projetoId)
+                .orElseThrow(() -> new RegraNegocioException("Projeto não encontrado ou arquivado."));
+        var especialista = usuarios.findById(entrada.especialistaId())
+                .orElseThrow(() -> new RegraNegocioException("Especialista não encontrado."));
+        if (!Boolean.TRUE.equals(especialista.getAtivo())
+                || especialista.getPerfil() != PerfilUsuario.ESPECIALISTA) {
+            throw new RegraNegocioException("O destinatário precisa ser um Especialista ativo.");
+        }
+
+        var consulta = new ConsultaEspecialista();
+        consulta.setProjeto(projeto);
+        consulta.setSolicitante(solicitante);
+        consulta.setEspecialista(especialista);
+        consulta.setQuestao(entrada.questao().strip());
+        consulta.setCriadoEm(LocalDateTime.now());
+        consultas.saveAndFlush(consulta);
+        return new ConsultaRegistradaResponse(consulta.getId(), projeto.getId(), solicitante.getId(),
+                especialista.getId(), consulta.getQuestao(), consulta.getCriadoEm());
+    }
+
+    /** Consulta paginada usada pelo contrato HTTP da Fase 4. */
+    @Transactional(readOnly = true)
+    @PreAuthorize("isAuthenticated()")
+    public Page<ConsultaEspecialistaResponse> listarPorProjeto(@NotNull @Positive Long projetoId, Pageable pageable) {
+        usuarioAtual.obterAtivo();
+        if (!projetos.existsById(projetoId)) {
+            throw new RecursoNaoEncontradoException("Projeto não encontrado.");
+        }
+        return consultas.findByProjetoId(projetoId, pageable).map(ConsultaEspecialistaResponse::de);
+    }
+
+    /** A autoria vem da sessão. A conversão reutiliza a mesma transação e as regras da Fase 3. */
+    @Transactional
+    @PreAuthorize("hasRole('ANALISTA')")
+    public ConsultaEspecialistaResponse encaminharConsulta(@NotNull @Positive Long projetoId,
+            @NotNull @Valid ConsultaEspecialistaRequest request, Long autorId) {
+        var registro = consultar(projetoId, new ConsultarEspecialistaRequest(request.especialistaId(), request.questao()));
+        return ConsultaEspecialistaResponse.de(consultas.findById(registro.id()).orElseThrow());
+    }
 }

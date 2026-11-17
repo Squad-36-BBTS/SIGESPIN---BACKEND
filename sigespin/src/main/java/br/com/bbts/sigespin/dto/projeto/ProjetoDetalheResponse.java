@@ -25,7 +25,11 @@ public record ProjetoDetalheResponse(
         UsuarioResumoResponse analistaResponsavel,
         Long versao,
         LocalDateTime criadoEm,
-        LocalDateTime atualizadoEm
+        LocalDateTime atualizadoEm,
+        boolean arquivado,
+        LocalDateTime arquivadoEm,
+        Long arquivadoPorId,
+        String motivoArquivamento
 ) {
     public static ProjetoDetalheResponse de(Projeto projeto) {
         if (projeto == null) {
@@ -49,7 +53,11 @@ public record ProjetoDetalheResponse(
                 UsuarioResumoResponse.de(projeto.getAnalistaResponsavel()),
                 projeto.getVersao(),
                 projeto.getCriadoEm(),
-                projeto.getAtualizadoEm()
+                projeto.getAtualizadoEm(),
+                projeto.getArquivado(),
+                projeto.getArquivadoEm(),
+                projeto.getArquivadoPor() == null ? null : projeto.getArquivadoPor().getId(),
+                projeto.getMotivoArquivamento()
         );
     }
 }

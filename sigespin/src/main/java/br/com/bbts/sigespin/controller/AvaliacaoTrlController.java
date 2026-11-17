@@ -3,11 +3,9 @@ package br.com.bbts.sigespin.controller;
 import br.com.bbts.sigespin.dto.comum.PaginaResponse;
 import br.com.bbts.sigespin.dto.trl.AvaliacaoTrlRequest;
 import br.com.bbts.sigespin.dto.trl.AvaliacaoTrlResponse;
-import br.com.bbts.sigespin.exception.ServicoIndisponivelException;
 import br.com.bbts.sigespin.security.UsuarioPrincipal;
 import br.com.bbts.sigespin.service.AvaliacaoTrlService;
 import jakarta.validation.Valid;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -28,15 +26,8 @@ public class AvaliacaoTrlController {
 
     private final AvaliacaoTrlService avaliacaoTrlService;
 
-    public AvaliacaoTrlController(@Autowired(required = false) AvaliacaoTrlService avaliacaoTrlService) {
+    public AvaliacaoTrlController(AvaliacaoTrlService avaliacaoTrlService) {
         this.avaliacaoTrlService = avaliacaoTrlService;
-    }
-
-    private AvaliacaoTrlService obterServico() {
-        if (this.avaliacaoTrlService == null) {
-            throw new ServicoIndisponivelException("O serviço de avaliações de TRL da Fase 3 ainda não foi integrado.");
-        }
-        return this.avaliacaoTrlService;
     }
 
     @GetMapping
@@ -45,17 +36,17 @@ public class AvaliacaoTrlController {
             @PathVariable("projetoId") Long projetoId,
             Pageable pageable) {
         Pageable seguro = PaginacaoUtils.ajustarLimite(pageable);
-        return PaginaResponse.de(obterServico().listarPorProjeto(projetoId, seguro));
+        return PaginaResponse.de(avaliacaoTrlService.listarPorProjeto(projetoId, seguro));
     }
 
     @PostMapping
-    @PreAuthorize("hasRole('ANALISTA')")
+    @PreAuthorize("hasAnyRole('ANALISTA', 'ESPECIALISTA')")
     public ResponseEntity<AvaliacaoTrlResponse> registrarAvaliacao(
             @PathVariable("projetoId") Long projetoId,
             @Valid @RequestBody AvaliacaoTrlRequest request,
             @AuthenticationPrincipal UsuarioPrincipal principal) {
         Long autorId = principal != null && principal.getUsuario() != null ? principal.getUsuario().getId() : null;
-        AvaliacaoTrlResponse criada = obterServico().registrarAvaliacao(projetoId, request, autorId);
+        AvaliacaoTrlResponse criada = avaliacaoTrlService.registrarAvaliacao(projetoId, request, autorId);
 
         URI location = ServletUriComponentsBuilder.fromCurrentRequest()
                 .path("/{id}")

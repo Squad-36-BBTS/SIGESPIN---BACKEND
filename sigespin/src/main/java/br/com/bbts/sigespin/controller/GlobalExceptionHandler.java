@@ -4,6 +4,8 @@ import br.com.bbts.sigespin.exception.ConflitoEstadoException;
 import br.com.bbts.sigespin.exception.RecursoNaoEncontradoException;
 import br.com.bbts.sigespin.exception.ServicoIndisponivelException;
 import br.com.bbts.sigespin.security.ApiErroResponse;
+import br.com.bbts.sigespin.service.RegraNegocioException;
+import org.springframework.dao.CannotAcquireLockException;
 import jakarta.validation.ConstraintViolationException;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
@@ -59,6 +61,19 @@ public class GlobalExceptionHandler {
                 "Violação de validação nos parâmetros informados.",
                 detalhes
         ));
+    }
+
+    @ExceptionHandler(RegraNegocioException.class)
+    public ResponseEntity<ApiErroResponse> handleRegraNegocio(RegraNegocioException ex) {
+        return ResponseEntity.unprocessableEntity().body(new ApiErroResponse(
+                Instant.now(), 422, "REGRA_NEGOCIO", ex.getMessage(), List.of()));
+    }
+
+    @ExceptionHandler(CannotAcquireLockException.class)
+    public ResponseEntity<ApiErroResponse> handleBloqueioConcorrente(CannotAcquireLockException ex) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(new ApiErroResponse(
+                Instant.now(), 409, "CONFLITO_CONCORRENCIA",
+                "Uma operação concorrente está atualizando o registro. Recarregue e tente novamente.", List.of()));
     }
 
     @ExceptionHandler(RecursoNaoEncontradoException.class)

@@ -60,9 +60,9 @@ class ProjetoControllerTests {
         ProjetoResponse projeto = new ProjetoResponse(
                 10L, "Demanda IA", ArenaTipo.NEGOCIOS_DIGITAIS, etapa,
                 OrigemDemanda.ESPONTANEA, 1, po, po, po, LocalDateTime.now()
-        );
+        , false);
 
-        when(projetoService.listarProjetos(eq(ArenaTipo.NEGOCIOS_DIGITAIS), eq(1L), eq("IA"), any(Pageable.class)))
+        when(projetoService.listarProjetos(eq(ArenaTipo.NEGOCIOS_DIGITAIS), eq(1L), eq("IA"), eq(null), any(Pageable.class)))
                 .thenReturn(new PageImpl<>(List.of(projeto)));
 
         mockMvc.perform(get("/api/projetos")
@@ -77,7 +77,7 @@ class ProjetoControllerTests {
                 .andExpect(jsonPath("$.conteudo[0].arena").value("NEGOCIOS_DIGITAIS"));
 
         ArgumentCaptor<Pageable> captor = ArgumentCaptor.forClass(Pageable.class);
-        verify(projetoService).listarProjetos(eq(ArenaTipo.NEGOCIOS_DIGITAIS), eq(1L), eq("IA"), captor.capture());
+        verify(projetoService).listarProjetos(eq(ArenaTipo.NEGOCIOS_DIGITAIS), eq(1L), eq("IA"), eq(null), captor.capture());
         assertEquals(100, captor.getValue().getPageSize(), "O tamanho da página deve ser limitado a 100 no servidor");
     }
 
@@ -90,7 +90,7 @@ class ProjetoControllerTests {
                 10L, "Demanda IA", "Descrição da dor", 100L, ArenaTipo.NEGOCIOS_DIGITAIS,
                 etapa, OrigemDemanda.ESPONTANEA, null, 1, "Hipótese", false,
                 BigDecimal.valueOf(15000), po, po, po, 0L, LocalDateTime.now(), LocalDateTime.now()
-        );
+        , false, null, null, null);
 
         when(projetoService.buscarPorId(10L)).thenReturn(detalhe);
 
@@ -126,7 +126,7 @@ class ProjetoControllerTests {
                 "Possível solução em software",
                 false,
                 BigDecimal.valueOf(25000)
-        );
+        , 1);
 
         UsuarioResumoResponse po = new UsuarioResumoResponse(2L, "Autor", "autor@bbts.com.br", PerfilUsuario.DEMANDANTE);
         EtapaResumoResponse etapa = new EtapaResumoResponse(1L, "IDEACAO", "Ideação", 0, null);
@@ -134,7 +134,7 @@ class ProjetoControllerTests {
                 42L, request.titulo(), request.descricaoDor(), request.areaDemandanteId(), request.arena(),
                 etapa, request.origem(), null, 1, request.hipoteseSolucao(), request.potencialLeiDoBem(),
                 request.dispendioEstimado(), po, po, null, 0L, LocalDateTime.now(), LocalDateTime.now()
-        );
+        , false, null, null, null);
 
         when(projetoService.criarDemanda(any(DemandaCreateRequest.class), any())).thenReturn(criado);
 
@@ -161,7 +161,7 @@ class ProjetoControllerTests {
                 null,
                 null,
                 null
-        );
+        , 1);
 
         mockMvc.perform(post("/api/projetos")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -184,7 +184,7 @@ class ProjetoControllerTests {
                 null,
                 null,
                 null
-        );
+        , 1);
 
         mockMvc.perform(post("/api/projetos")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -207,7 +207,7 @@ class ProjetoControllerTests {
                 null,
                 null,
                 null
-        );
+        , 1);
 
         UsuarioResumoResponse po = new UsuarioResumoResponse(2L, "Autor", "autor@bbts.com.br", PerfilUsuario.ANALISTA);
         EtapaResumoResponse etapa = new EtapaResumoResponse(1L, "IDEACAO", "Ideação", 0, null);
@@ -215,7 +215,7 @@ class ProjetoControllerTests {
                 43L, requestValido.titulo(), requestValido.descricaoDor(), requestValido.areaDemandanteId(), requestValido.arena(),
                 etapa, requestValido.origem(), 5L, 1, null, null, null,
                 po, po, po, 0L, LocalDateTime.now(), LocalDateTime.now()
-        );
+        , false, null, null, null);
 
         when(projetoService.criarDemanda(any(DemandaCreateRequest.class), any())).thenReturn(criado);
 

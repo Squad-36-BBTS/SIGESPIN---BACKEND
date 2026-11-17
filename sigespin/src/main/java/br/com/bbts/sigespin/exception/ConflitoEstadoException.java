@@ -1,6 +1,8 @@
 package br.com.bbts.sigespin.exception;
 
-public class ConflitoEstadoException extends RuntimeException {
+import br.com.bbts.sigespin.service.RegraNegocioException;
+
+public class ConflitoEstadoException extends RegraNegocioException {
     public ConflitoEstadoException(String mensagem) {
         super(mensagem);
     }

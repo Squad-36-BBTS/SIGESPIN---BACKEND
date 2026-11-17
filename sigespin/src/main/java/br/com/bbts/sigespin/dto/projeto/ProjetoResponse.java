@@ -16,7 +16,8 @@ public record ProjetoResponse(
         UsuarioResumoResponse responsavelPo,
         UsuarioResumoResponse demandante,
         UsuarioResumoResponse analistaResponsavel,
-        LocalDateTime criadoEm
+        LocalDateTime criadoEm,
+        boolean arquivado
 ) {
     public static ProjetoResponse de(Projeto projeto) {
         if (projeto == null) {
@@ -32,7 +33,8 @@ public record ProjetoResponse(
                 UsuarioResumoResponse.de(projeto.getResponsavelPo()),
                 UsuarioResumoResponse.de(projeto.getDemandante()),
                 UsuarioResumoResponse.de(projeto.getAnalistaResponsavel()),
-                projeto.getCriadoEm()
+                projeto.getCriadoEm(),
+                projeto.getArquivado()
         );
     }
 }
