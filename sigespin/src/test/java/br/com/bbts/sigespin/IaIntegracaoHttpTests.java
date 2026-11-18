@@ -108,16 +108,38 @@ class IaIntegracaoHttpTests {
     @Autowired UsuarioRepository usuarios;
     @Autowired ProjetoRepository projetos;
     @Autowired PasswordEncoder senhas;
+    @Autowired br.com.bbts.sigespin.service.ProtecaoIa protecao;
     String demandante, analista, especialista;
 
     @BeforeEach
     void preparar() throws Exception {
+        protecao.circuito().reset();
         chamadas.set(0);
         corpoRecebido.set(null);
         resposta.set(new RespostaProvedor(200, envelope(SUGESTAO), 0));
         demandante = token(PerfilUsuario.DEMANDANTE);
         analista = token(PerfilUsuario.ANALISTA);
         especialista = token(PerfilUsuario.ESPECIALISTA);
+    }
+
+    @Test
+    void limitePorUsuarioRetorna429SemAcionarProvedorNovamente() throws Exception {
+        for (int i=0; i<10; i++) analisar(demandante, entrada(), 200);
+        var resultado = mvc.perform(request(HttpMethod.POST, ROTA)
+                .header("Authorization", "Bearer "+demandante).contentType(MediaType.APPLICATION_JSON)
+                .content(json.writeValueAsBytes(Map.of("titulo", "Demanda", "descricao", "Problema operacional"))))
+                .andExpect(status().isTooManyRequests()).andReturn();
+        assertNotNull(resultado.getResponse().getHeader("Retry-After"));
+        assertEquals(10, chamadas.get());
+        analisar(analista, entrada(), 200);
+        assertEquals(11, chamadas.get());
+    }
+
+    @Test
+    void circuitoAbertoRetorna503SemNovaChamadaAoProvedor() throws Exception {
+        resposta.set(new RespostaProvedor(503, "{}", 0));
+        for (int i=0; i<6; i++) analisar(demandante, entrada(), 503);
+        assertEquals(5, chamadas.get());
     }
 
     @AfterAll
@@ -146,6 +168,10 @@ class IaIntegracaoHttpTests {
         assertTrue(enviado.path("systemInstruction").path("parts").path(0).path("text").asText().contains("PRO663-009"));
         assertTrue(enviado.path("contents").path(0).path("parts").path(0).path("text").asText().contains("O processo é manual."));
         assertEquals("application/json", enviado.path("generationConfig").path("responseMimeType").asText());
+        var esquema = enviado.path("generationConfig").path("responseJsonSchema");
+        assertEquals(6, esquema.path("required").size());
+        assertEquals(3, esquema.path("properties").path("trlInicial").path("maximum").asInt());
+        assertEquals(4, esquema.path("properties").path("scoresRadar").path("properties").path("receita").path("maximum").asInt());
     }
 
     @Test

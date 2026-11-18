@@ -52,9 +52,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @Transactional
 class IntegracaoFases34Tests {
     static final String SCHEMA = "api34_" + UUID.randomUUID().toString().replace("-", "");
+    static final java.nio.file.Path ARQUIVOS = java.nio.file.Path.of(System.getProperty("java.io.tmpdir"), SCHEMA);
 
     @DynamicPropertySource
     static void configurar(DynamicPropertyRegistry registro) {
+        registro.add("app.arquivos.diretorio", ARQUIVOS::toString);
+        registro.add("app.arquivos.tipo", () -> "LOCAL");
         String url = System.getenv("SIGESPIN_TEST_DB_URL");
         registro.add("spring.datasource.url", () -> url + (url.contains("?") ? "&" : "?") + "currentSchema=" + SCHEMA);
         registro.add("spring.flyway.schemas", () -> SCHEMA);
@@ -69,6 +72,8 @@ class IntegracaoFases34Tests {
     @Autowired EtapaKanbanRepository etapas;
     @Autowired TransicaoKanbanRepository transicoes;
     @Autowired PasswordEncoder senhas;
+    @Autowired br.com.bbts.sigespin.service.ArquivoEvidenciaService arquivos;
+    @Autowired org.springframework.transaction.PlatformTransactionManager transacoes;
 
     Usuario demandante, outroDemandante, analista, especialista, outroEspecialista;
     String tokenD, tokenOutroD, tokenA, tokenE, tokenOutroE;
@@ -95,6 +100,112 @@ class IntegracaoFases34Tests {
              var statement = conexao.createStatement()) {
             statement.execute("DROP SCHEMA IF EXISTS " + SCHEMA + " CASCADE");
         }
+        if (java.nio.file.Files.exists(ARQUIVOS)) {
+            try (var caminhos = java.nio.file.Files.walk(ARQUIVOS)) {
+                for (var caminho : caminhos.sorted(java.util.Comparator.reverseOrder()).toList()) java.nio.file.Files.delete(caminho);
+            }
+        }
+    }
+
+    @Test
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
+    void uploadRealPreservaBytesMetadadosEDownloadCompartilhado() throws Exception {
+        long id = cadastrar();
+        var comprovante = enviarArquivo(id, tokenD, "comprovação.pdf", "%PDF-1.7\n%%EOF".getBytes(), 201);
+        assertEquals(demandante.getId().longValue(), comprovante.path("enviadaPorId").asLong());
+        assertEquals(64, comprovante.path("sha256").asText().length());
+        assertFalse(comprovante.has("caminhoStorage"));
+        var download = mvc.perform(request(HttpMethod.GET, comprovante.path("downloadUrl").asText())
+                .header("Authorization", "Bearer " + tokenOutroD)).andExpect(status().isOk()).andReturn().getResponse();
+        assertArrayEquals("%PDF-1.7\n%%EOF".getBytes(), download.getContentAsByteArray());
+        assertTrue(download.getHeader("Content-Disposition").startsWith("attachment;"));
+        assertEquals("nosniff", download.getHeader("X-Content-Type-Options"));
+        assertEquals(1, api(HttpMethod.GET, projeto(id)+"/evidencias", tokenE, null, 200).size());
+        long outro = cadastrar();
+        api(HttpMethod.GET, projeto(outro)+"/evidencias/"+comprovante.path("id").asLong()+"/conteudo", tokenA, null, 404);
+    }
+
+    @Test
+    void uploadRespeitaTitularidadePerfilEAutenticacao() throws Exception {
+        long id = cadastrar();
+        enviarArquivo(id, tokenOutroD, "prova.pdf", "%PDF-1.7".getBytes(), 403);
+        enviarArquivo(id, null, "prova.pdf", "%PDF-1.7".getBytes(), 401);
+        enviarArquivo(id, tokenA, "prova.pdf", "%PDF-1.7".getBytes(), 201);
+        enviarArquivo(id, tokenE, "prova.pdf", "%PDF-1.7".getBytes(), 201);
+        assertEquals(2, evidencias.findByProjetoIdOrderByDataUploadDesc(id).size());
+    }
+
+    @Test
+    void arquivoEnviadoPodeFundamentarAvaliacaoTrl() throws Exception {
+        long id = cadastrar();
+        long arquivoId = enviarArquivo(id, tokenA, "teste.pdf", "%PDF-1.7".getBytes(), 201).path("id").asLong();
+        api(HttpMethod.POST, projeto(id)+"/avaliacoes-trl", tokenA, avaliacao(3, arquivoId), 201);
+        assertEquals(3, api(HttpMethod.GET, projeto(id), tokenD, null, 200).path("trlAtual").asInt());
+    }
+
+    @Test
+    void arquivarBloqueiaNovosArquivosEPreservaLeituraDosAnteriores() throws Exception {
+        long id = cadastrar();
+        var arquivo = enviarArquivo(id, tokenD, "prova.pdf", "%PDF-1.7".getBytes(), 201);
+        api(HttpMethod.PUT, projeto(id)+"/arquivamento", tokenE, Map.of("arquivado", true, "justificativa", "Encerrado", "versao", 0), 200);
+        enviarArquivo(id, tokenE, "outro.pdf", "%PDF-1.7".getBytes(), 422);
+        api(HttpMethod.GET, projeto(id)+"/evidencias", tokenOutroD, null, 200);
+        mvc.perform(request(HttpMethod.GET, arquivo.path("downloadUrl").asText()).header("Authorization", "Bearer "+tokenD))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void uploadInvalidoRetorna400EGrandeRetorna413SemCriarRegistro() throws Exception {
+        long id = cadastrar();
+        enviarArquivo(id, tokenD, "falso.pdf", "texto".getBytes(), 400);
+        enviarArquivo(id, tokenD, "planilha.xlsx", new byte[]{1}, 400);
+        enviarArquivo(id, tokenD, "vazio.pdf", new byte[0], 400);
+        enviarArquivo(id, tokenD, "grande.pdf", new byte[10*1024*1024+1], 413);
+        mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart(projeto(id)+"/evidencias")
+                .header("Authorization", "Bearer "+tokenD)).andExpect(status().isBadRequest());
+        assertTrue(evidencias.findByProjetoIdOrderByDataUploadDesc(id).isEmpty());
+    }
+
+    @Test
+    void evidenciasLegadasPermanecemConsultaveisSemInventarConteudo() throws Exception {
+        long id = cadastrar();
+        long legado = evidencia(id);
+        var lista = api(HttpMethod.GET, projeto(id)+"/evidencias", tokenD, null, 200);
+        assertTrue(lista.path(0).path("sha256").isNull());
+        api(HttpMethod.GET, projeto(id)+"/evidencias/"+legado+"/conteudo", tokenD, null, 404);
+    }
+
+    @Test
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
+    void rollbackRemoveObjetoFisicoSemPreservarMetadados() throws Exception {
+        long id = cadastrar();
+        var transacao = new org.springframework.transaction.support.TransactionTemplate(transacoes);
+        var contexto = org.springframework.security.core.context.SecurityContextHolder.getContext();
+        contexto.setAuthentication(org.springframework.security.authentication.UsernamePasswordAuthenticationToken.authenticated(
+                demandante.getEmail(), null, List.of(new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_DEMANDANTE"))));
+        var chave = new java.util.concurrent.atomic.AtomicReference<String>();
+        try {
+            assertThrows(IllegalStateException.class, () -> transacao.execute(status -> {
+                try {
+                    var dto = arquivos.enviar(id, new org.springframework.mock.web.MockMultipartFile(
+                            "arquivo", "prova.pdf", "application/pdf", "%PDF-1.7".getBytes()));
+                    chave.set(evidencias.findById(dto.id()).orElseThrow().getCaminhoStorage());
+                    assertTrue(java.nio.file.Files.exists(ARQUIVOS.resolve(chave.get())));
+                    throw new IllegalStateException("Falha após gravação");
+                } catch (java.io.IOException e) { throw new java.io.UncheckedIOException(e); }
+            }));
+            assertNotNull(chave.get());
+            assertFalse(java.nio.file.Files.exists(ARQUIVOS.resolve(chave.get())));
+            assertTrue(evidencias.findByProjetoIdOrderByDataUploadDesc(id).isEmpty());
+        } finally { org.springframework.security.core.context.SecurityContextHolder.clearContext(); }
+    }
+
+    private JsonNode enviarArquivo(long id, String token, String nome, byte[] bytes, int esperado) throws Exception {
+        var req = org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart(projeto(id)+"/evidencias")
+                .file(new org.springframework.mock.web.MockMultipartFile("arquivo", nome, "application/octet-stream", bytes));
+        if (token != null) req.header("Authorization", "Bearer "+token);
+        var resposta = mvc.perform(req).andExpect(status().is(esperado)).andReturn().getResponse();
+        return resposta.getContentAsByteArray().length == 0 ? json.nullNode() : json.readTree(resposta.getContentAsByteArray());
     }
 
     @Test

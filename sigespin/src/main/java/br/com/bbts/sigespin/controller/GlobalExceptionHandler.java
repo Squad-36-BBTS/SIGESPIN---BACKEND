@@ -165,6 +165,37 @@ public class GlobalExceptionHandler {
         ));
     }
 
+    @ExceptionHandler(br.com.bbts.sigespin.exception.ArquivoInvalidoException.class)
+    public ResponseEntity<ApiErroResponse> arquivoInvalido(Exception ex) {
+        return ResponseEntity.badRequest().body(new ApiErroResponse(Instant.now(), 400,
+                "ARQUIVO_INVALIDO", ex.getMessage(), List.of()));
+    }
+
+    @ExceptionHandler(org.springframework.web.multipart.support.MissingServletRequestPartException.class)
+    public ResponseEntity<ApiErroResponse> arquivoAusente(Exception ex) {
+        return ResponseEntity.badRequest().body(new ApiErroResponse(Instant.now(), 400,
+                "ARQUIVO_AUSENTE", "Envie o arquivo no campo 'arquivo'.", List.of()));
+    }
+
+    @ExceptionHandler(org.springframework.web.multipart.MaxUploadSizeExceededException.class)
+    public ResponseEntity<ApiErroResponse> arquivoGrande(Exception ex) {
+        return ResponseEntity.status(413).body(new ApiErroResponse(Instant.now(), 413,
+                "ARQUIVO_MUITO_GRANDE", "O limite é de 10 MB por arquivo.", List.of()));
+    }
+
+    @ExceptionHandler(br.com.bbts.sigespin.exception.ArmazenamentoIndisponivelException.class)
+    public ResponseEntity<ApiErroResponse> armazenamentoIndisponivel(Exception ex) {
+        return ResponseEntity.status(503).body(new ApiErroResponse(Instant.now(), 503,
+                "ARMAZENAMENTO_INDISPONIVEL", "Não foi possível acessar o arquivo. Tente novamente.", List.of()));
+    }
+
+    @ExceptionHandler(br.com.bbts.sigespin.exception.LimiteIaException.class)
+    public ResponseEntity<ApiErroResponse> limiteIa(br.com.bbts.sigespin.exception.LimiteIaException ex) {
+        return ResponseEntity.status(429).header("Retry-After", Long.toString(ex.getEsperaSegundos()))
+                .body(new ApiErroResponse(Instant.now(), 429, "LIMITE_IA",
+                        "Limite temporário da IA atingido. Aguarde para tentar novamente.", List.of()));
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiErroResponse> handleErroGeral(Exception ex) {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new ApiErroResponse(

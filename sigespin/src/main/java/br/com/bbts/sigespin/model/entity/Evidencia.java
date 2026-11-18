@@ -38,6 +38,19 @@ public class Evidencia {
     @Column(name = "data_upload", nullable = false)
     private LocalDateTime dataUpload;
 
+    @Column(name = "tamanho_bytes")
+    private Long tamanhoBytes;
+
+    @Column(name = "sha256", length = 64)
+    private String sha256;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "enviado_por_id")
+    private Usuario enviadaPor;
+
+    @Column(name = "armazenamento", length = 16)
+    private String armazenamento;
+
     @PrePersist
     protected void onCreate() {
         if (this.dataUpload == null) {
