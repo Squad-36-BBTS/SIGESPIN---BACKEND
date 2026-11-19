@@ -3,11 +3,9 @@ package br.com.bbts.sigespin.controller;
 import br.com.bbts.sigespin.dto.comum.PaginaResponse;
 import br.com.bbts.sigespin.dto.qualificacao.QualificacaoDemandaRequest;
 import br.com.bbts.sigespin.dto.qualificacao.QualificacaoDemandaResponse;
-import br.com.bbts.sigespin.exception.ServicoIndisponivelException;
 import br.com.bbts.sigespin.security.UsuarioPrincipal;
 import br.com.bbts.sigespin.service.QualificacaoDemandaService;
 import jakarta.validation.Valid;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -28,15 +26,8 @@ public class QualificacaoDemandaController {
 
     private final QualificacaoDemandaService qualificacaoService;
 
-    public QualificacaoDemandaController(@Autowired(required = false) QualificacaoDemandaService qualificacaoService) {
+    public QualificacaoDemandaController(QualificacaoDemandaService qualificacaoService) {
         this.qualificacaoService = qualificacaoService;
-    }
-
-    private QualificacaoDemandaService obterServico() {
-        if (this.qualificacaoService == null) {
-            throw new ServicoIndisponivelException("O serviço de qualificação de demandas da Fase 3 ainda não foi integrado.");
-        }
-        return this.qualificacaoService;
     }
 
     @GetMapping
@@ -45,7 +36,7 @@ public class QualificacaoDemandaController {
             @PathVariable("projetoId") Long projetoId,
             Pageable pageable) {
         Pageable seguro = PaginacaoUtils.ajustarLimite(pageable);
-        return PaginaResponse.de(obterServico().listarPorProjeto(projetoId, seguro));
+        return PaginaResponse.de(qualificacaoService.listarPorProjeto(projetoId, seguro));
     }
 
     @PostMapping
@@ -55,7 +46,7 @@ public class QualificacaoDemandaController {
             @Valid @RequestBody QualificacaoDemandaRequest request,
             @AuthenticationPrincipal UsuarioPrincipal principal) {
         Long autorId = principal != null && principal.getUsuario() != null ? principal.getUsuario().getId() : null;
-        QualificacaoDemandaResponse criada = obterServico().registrarQualificacao(projetoId, request, autorId);
+        QualificacaoDemandaResponse criada = qualificacaoService.registrarQualificacao(projetoId, request, autorId);
 
         URI location = ServletUriComponentsBuilder.fromCurrentRequest()
                 .path("/{id}")

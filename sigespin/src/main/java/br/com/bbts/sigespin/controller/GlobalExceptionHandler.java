@@ -1,9 +1,12 @@
 package br.com.bbts.sigespin.controller;
 
 import br.com.bbts.sigespin.exception.ConflitoEstadoException;
+import br.com.bbts.sigespin.exception.IaIndisponivelException;
 import br.com.bbts.sigespin.exception.RecursoNaoEncontradoException;
 import br.com.bbts.sigespin.exception.ServicoIndisponivelException;
 import br.com.bbts.sigespin.security.ApiErroResponse;
+import br.com.bbts.sigespin.service.RegraNegocioException;
+import org.springframework.dao.CannotAcquireLockException;
 import jakarta.validation.ConstraintViolationException;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
@@ -61,6 +64,19 @@ public class GlobalExceptionHandler {
         ));
     }
 
+    @ExceptionHandler(RegraNegocioException.class)
+    public ResponseEntity<ApiErroResponse> handleRegraNegocio(RegraNegocioException ex) {
+        return ResponseEntity.unprocessableEntity().body(new ApiErroResponse(
+                Instant.now(), 422, "REGRA_NEGOCIO", ex.getMessage(), List.of()));
+    }
+
+    @ExceptionHandler(CannotAcquireLockException.class)
+    public ResponseEntity<ApiErroResponse> handleBloqueioConcorrente(CannotAcquireLockException ex) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(new ApiErroResponse(
+                Instant.now(), 409, "CONFLITO_CONCORRENCIA",
+                "Uma operação concorrente está atualizando o registro. Recarregue e tente novamente.", List.of()));
+    }
+
     @ExceptionHandler(RecursoNaoEncontradoException.class)
     public ResponseEntity<ApiErroResponse> handleNaoEncontrado(RecursoNaoEncontradoException ex) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ApiErroResponse(
@@ -90,6 +106,17 @@ public class GlobalExceptionHandler {
                 HttpStatus.CONFLICT.value(),
                 "CONFLITO_CONCORRENCIA",
                 "O registro foi alterado por outra operação concorrente. Recarregue e tente novamente.",
+                List.of()
+        ));
+    }
+
+    @ExceptionHandler(IaIndisponivelException.class)
+    public ResponseEntity<ApiErroResponse> handleIaIndisponivel(IaIndisponivelException ex) {
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(new ApiErroResponse(
+                Instant.now(),
+                HttpStatus.SERVICE_UNAVAILABLE.value(),
+                "IA_INDISPONIVEL",
+                "A sugestão da IA está indisponível. Preencha os campos manualmente.",
                 List.of()
         ));
     }
@@ -136,6 +163,37 @@ public class GlobalExceptionHandler {
                 "Parâmetros inválidos ou corpo da requisição malformado.",
                 List.of()
         ));
+    }
+
+    @ExceptionHandler(br.com.bbts.sigespin.exception.ArquivoInvalidoException.class)
+    public ResponseEntity<ApiErroResponse> arquivoInvalido(Exception ex) {
+        return ResponseEntity.badRequest().body(new ApiErroResponse(Instant.now(), 400,
+                "ARQUIVO_INVALIDO", ex.getMessage(), List.of()));
+    }
+
+    @ExceptionHandler(org.springframework.web.multipart.support.MissingServletRequestPartException.class)
+    public ResponseEntity<ApiErroResponse> arquivoAusente(Exception ex) {
+        return ResponseEntity.badRequest().body(new ApiErroResponse(Instant.now(), 400,
+                "ARQUIVO_AUSENTE", "Envie o arquivo no campo 'arquivo'.", List.of()));
+    }
+
+    @ExceptionHandler(org.springframework.web.multipart.MaxUploadSizeExceededException.class)
+    public ResponseEntity<ApiErroResponse> arquivoGrande(Exception ex) {
+        return ResponseEntity.status(413).body(new ApiErroResponse(Instant.now(), 413,
+                "ARQUIVO_MUITO_GRANDE", "O limite é de 10 MB por arquivo.", List.of()));
+    }
+
+    @ExceptionHandler(br.com.bbts.sigespin.exception.ArmazenamentoIndisponivelException.class)
+    public ResponseEntity<ApiErroResponse> armazenamentoIndisponivel(Exception ex) {
+        return ResponseEntity.status(503).body(new ApiErroResponse(Instant.now(), 503,
+                "ARMAZENAMENTO_INDISPONIVEL", "Não foi possível acessar o arquivo. Tente novamente.", List.of()));
+    }
+
+    @ExceptionHandler(br.com.bbts.sigespin.exception.LimiteIaException.class)
+    public ResponseEntity<ApiErroResponse> limiteIa(br.com.bbts.sigespin.exception.LimiteIaException ex) {
+        return ResponseEntity.status(429).header("Retry-After", Long.toString(ex.getEsperaSegundos()))
+                .body(new ApiErroResponse(Instant.now(), 429, "LIMITE_IA",
+                        "Limite temporário da IA atingido. Aguarde para tentar novamente.", List.of()));
     }
 
     @ExceptionHandler(Exception.class)

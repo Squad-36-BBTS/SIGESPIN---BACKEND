@@ -1,7 +1,7 @@
 package br.com.bbts.sigespin.security;
 
-import br.com.bbts.sigespin.repository.TokenJwtRevogadoRepository;
-import br.com.bbts.sigespin.repository.UsuarioRepository;
+import br.com.bbts.sigespin.repository.seguranca.TokenJwtRevogadoRepository;
+import br.com.bbts.sigespin.repository.seguranca.UsuarioRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -40,13 +40,15 @@ public class SecurityConfiguration {
 
     @Bean
     CorsConfigurationSource corsConfigurationSource(
-            @Value("${app.cors.allowed-origins:http://localhost:3000,http://127.0.0.1:3000}") String allowedOrigins) {
+            @Value("${app.cors.allowed-origins}") String allowedOrigins) {
         CorsConfiguration configuration = new CorsConfiguration();
         configuration.setAllowedOrigins(Arrays.stream(allowedOrigins.split(","))
                 .map(String::trim).filter(origin -> !origin.isEmpty()).toList());
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("Authorization", "Content-Type", "Accept"));
-        configuration.setExposedHeaders(List.of("Authorization"));
+        // Retry-After: o frontend precisa saber quando tentar de novo após um 429.
+        // Content-Disposition: o frontend lê o nome do arquivo no download de comprovantes.
+        configuration.setExposedHeaders(List.of("Authorization", "Retry-After", "Content-Disposition"));
         configuration.setAllowCredentials(false);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
@@ -74,6 +76,8 @@ public class SecurityConfiguration {
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers("/api/auth/login").permitAll()
                         .requestMatchers("/error").permitAll()
+                        // Verificação de saúde do Render: responde só UP/DOWN, sem detalhes.
+                        .requestMatchers("/actuator/health").permitAll()
                         .anyRequest().authenticated())
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
                 .build();

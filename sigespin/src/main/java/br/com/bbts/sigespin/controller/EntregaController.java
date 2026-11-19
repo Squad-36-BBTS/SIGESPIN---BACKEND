@@ -5,11 +5,9 @@ import br.com.bbts.sigespin.dto.entrega.EntregaProjetoRequest;
 import br.com.bbts.sigespin.dto.entrega.EntregaProjetoResponse;
 import br.com.bbts.sigespin.dto.entrega.ValidacaoEntregaRequest;
 import br.com.bbts.sigespin.dto.entrega.ValidacaoEntregaResponse;
-import br.com.bbts.sigespin.exception.ServicoIndisponivelException;
 import br.com.bbts.sigespin.security.UsuarioPrincipal;
 import br.com.bbts.sigespin.service.EntregaService;
 import jakarta.validation.Valid;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -30,15 +28,8 @@ public class EntregaController {
 
     private final EntregaService entregaService;
 
-    public EntregaController(@Autowired(required = false) EntregaService entregaService) {
+    public EntregaController(EntregaService entregaService) {
         this.entregaService = entregaService;
-    }
-
-    private EntregaService obterServico() {
-        if (this.entregaService == null) {
-            throw new ServicoIndisponivelException("O serviço de entregas e validações da Fase 3 ainda não foi integrado.");
-        }
-        return this.entregaService;
     }
 
     @GetMapping("/entregas")
@@ -47,17 +38,17 @@ public class EntregaController {
             @PathVariable("projetoId") Long projetoId,
             Pageable pageable) {
         Pageable seguro = PaginacaoUtils.ajustarLimite(pageable);
-        return PaginaResponse.de(obterServico().listarEntregasPorProjeto(projetoId, seguro));
+        return PaginaResponse.de(entregaService.listarEntregasPorProjeto(projetoId, seguro));
     }
 
     @PostMapping("/entregas")
-    @PreAuthorize("hasAnyRole('ANALISTA', 'DEMANDANTE')")
+    @PreAuthorize("hasAnyRole('ANALISTA', 'ESPECIALISTA')")
     public ResponseEntity<EntregaProjetoResponse> submeterEntrega(
             @PathVariable("projetoId") Long projetoId,
             @Valid @RequestBody EntregaProjetoRequest request,
             @AuthenticationPrincipal UsuarioPrincipal principal) {
         Long autorId = principal != null && principal.getUsuario() != null ? principal.getUsuario().getId() : null;
-        EntregaProjetoResponse criada = obterServico().submeterEntrega(projetoId, request, autorId);
+        EntregaProjetoResponse criada = entregaService.submeterEntrega(projetoId, request, autorId);
 
         URI location = ServletUriComponentsBuilder.fromCurrentRequest()
                 .path("/{id}")
@@ -73,7 +64,7 @@ public class EntregaController {
             @PathVariable("projetoId") Long projetoId,
             Pageable pageable) {
         Pageable seguro = PaginacaoUtils.ajustarLimite(pageable);
-        return PaginaResponse.de(obterServico().listarValidacoesPorProjeto(projetoId, seguro));
+        return PaginaResponse.de(entregaService.listarValidacoesPorProjeto(projetoId, seguro));
     }
 
     @PostMapping("/entregas/{entregaId}/validacoes")
@@ -84,7 +75,7 @@ public class EntregaController {
             @Valid @RequestBody ValidacaoEntregaRequest request,
             @AuthenticationPrincipal UsuarioPrincipal principal) {
         Long demandanteId = principal != null && principal.getUsuario() != null ? principal.getUsuario().getId() : null;
-        ValidacaoEntregaResponse validacao = obterServico().registrarValidacao(projetoId, entregaId, request, demandanteId);
+        ValidacaoEntregaResponse validacao = entregaService.registrarValidacao(projetoId, entregaId, request, demandanteId);
 
         URI location = ServletUriComponentsBuilder.fromCurrentRequest()
                 .path("/{id}")

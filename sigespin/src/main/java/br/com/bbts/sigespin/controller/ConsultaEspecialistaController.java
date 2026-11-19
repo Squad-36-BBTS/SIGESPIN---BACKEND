@@ -3,11 +3,9 @@ package br.com.bbts.sigespin.controller;
 import br.com.bbts.sigespin.dto.comum.PaginaResponse;
 import br.com.bbts.sigespin.dto.parecer.ConsultaEspecialistaRequest;
 import br.com.bbts.sigespin.dto.parecer.ConsultaEspecialistaResponse;
-import br.com.bbts.sigespin.exception.ServicoIndisponivelException;
 import br.com.bbts.sigespin.security.UsuarioPrincipal;
 import br.com.bbts.sigespin.service.ConsultaEspecialistaService;
 import jakarta.validation.Valid;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -28,15 +26,8 @@ public class ConsultaEspecialistaController {
 
     private final ConsultaEspecialistaService consultaService;
 
-    public ConsultaEspecialistaController(@Autowired(required = false) ConsultaEspecialistaService consultaService) {
+    public ConsultaEspecialistaController(ConsultaEspecialistaService consultaService) {
         this.consultaService = consultaService;
-    }
-
-    private ConsultaEspecialistaService obterServico() {
-        if (this.consultaService == null) {
-            throw new ServicoIndisponivelException("O serviço de consultas a especialistas da Fase 3 ainda não foi integrado.");
-        }
-        return this.consultaService;
     }
 
     @GetMapping
@@ -45,7 +36,7 @@ public class ConsultaEspecialistaController {
             @PathVariable("projetoId") Long projetoId,
             Pageable pageable) {
         Pageable seguro = PaginacaoUtils.ajustarLimite(pageable);
-        return PaginaResponse.de(obterServico().listarPorProjeto(projetoId, seguro));
+        return PaginaResponse.de(consultaService.listarPorProjeto(projetoId, seguro));
     }
 
     @PostMapping
@@ -55,7 +46,7 @@ public class ConsultaEspecialistaController {
             @Valid @RequestBody ConsultaEspecialistaRequest request,
             @AuthenticationPrincipal UsuarioPrincipal principal) {
         Long solicitanteId = principal != null && principal.getUsuario() != null ? principal.getUsuario().getId() : null;
-        ConsultaEspecialistaResponse criada = obterServico().encaminharConsulta(projetoId, request, solicitanteId);
+        ConsultaEspecialistaResponse criada = consultaService.encaminharConsulta(projetoId, request, solicitanteId);
 
         URI location = ServletUriComponentsBuilder.fromCurrentRequest()
                 .path("/{id}")

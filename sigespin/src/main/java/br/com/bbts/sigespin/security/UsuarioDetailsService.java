@@ -1,7 +1,7 @@
 package br.com.bbts.sigespin.security;
 
 import br.com.bbts.sigespin.model.entity.Usuario;
-import br.com.bbts.sigespin.repository.UsuarioRepository;
+import br.com.bbts.sigespin.repository.seguranca.UsuarioRepository;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
