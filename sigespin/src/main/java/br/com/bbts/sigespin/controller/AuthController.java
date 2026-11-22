@@ -2,11 +2,15 @@ package br.com.bbts.sigespin.controller;
 
 import br.com.bbts.sigespin.dto.auth.LoginRequest;
 import br.com.bbts.sigespin.dto.auth.LoginResponse;
+import br.com.bbts.sigespin.dto.auth.SolicitacaoAcessoRecebidaResponse;
+import br.com.bbts.sigespin.dto.auth.SolicitarAcessoRequest;
 import br.com.bbts.sigespin.dto.auth.UsuarioAutenticadoResponse;
+import br.com.bbts.sigespin.exception.LimiteSolicitacoesAcessoException;
 import br.com.bbts.sigespin.security.ApiErroResponse;
 import br.com.bbts.sigespin.security.UsuarioPrincipal;
 import br.com.bbts.sigespin.service.AutenticacaoService;
 import br.com.bbts.sigespin.service.CredenciaisInvalidasException;
+import br.com.bbts.sigespin.service.SolicitacaoAcessoService;
 import br.com.bbts.sigespin.service.TokenJwtRevogacaoService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -30,15 +34,26 @@ public class AuthController {
 
     private final AutenticacaoService autenticacaoService;
     private final TokenJwtRevogacaoService revogacaoService;
+    private final SolicitacaoAcessoService solicitacaoAcessoService;
 
-    public AuthController(AutenticacaoService autenticacaoService, TokenJwtRevogacaoService revogacaoService) {
+    public AuthController(AutenticacaoService autenticacaoService, TokenJwtRevogacaoService revogacaoService,
+            SolicitacaoAcessoService solicitacaoAcessoService) {
         this.autenticacaoService = autenticacaoService;
         this.revogacaoService = revogacaoService;
+        this.solicitacaoAcessoService = solicitacaoAcessoService;
     }
 
     @PostMapping("/login")
     public LoginResponse login(@Valid @RequestBody LoginRequest request) {
         return autenticacaoService.autenticar(request);
+    }
+
+    /** Rota pública: responde 202 com a mesma mensagem em todos os casos aceitos. */
+    @PostMapping("/solicitacoes-acesso")
+    public ResponseEntity<SolicitacaoAcessoRecebidaResponse> solicitarAcesso(
+            @Valid @RequestBody SolicitarAcessoRequest request) {
+        solicitacaoAcessoService.solicitar(request);
+        return ResponseEntity.status(HttpStatus.ACCEPTED).body(SolicitacaoAcessoRecebidaResponse.PADRAO);
     }
 
     @PostMapping("/logout")
@@ -61,6 +76,14 @@ class AuthExceptionHandler {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new ApiErroResponse(
                 Instant.now(), HttpStatus.UNAUTHORIZED.value(), "CREDENCIAIS_INVALIDAS",
                 exception.getMessage(), List.of()));
+    }
+
+    @ExceptionHandler(LimiteSolicitacoesAcessoException.class)
+    ResponseEntity<ApiErroResponse> limiteSolicitacoes(LimiteSolicitacoesAcessoException exception) {
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                .header("Retry-After", Long.toString(exception.getEsperaSegundos()))
+                .body(new ApiErroResponse(Instant.now(), HttpStatus.TOO_MANY_REQUESTS.value(), "LIMITE_SOLICITACOES",
+                        "Muitas solicitações em pouco tempo. Aguarde para tentar novamente.", List.of()));
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
