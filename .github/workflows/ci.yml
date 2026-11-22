@@ -1,0 +1,61 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build e testes (Java 21 + PostgreSQL 16)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    defaults:
+      run:
+        working-directory: sigespin
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          # Credenciais descartáveis: valem apenas para este banco efêmero do CI.
+          POSTGRES_DB: sigespin_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: ci-descartavel
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d sigespin_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      # Lidas pelos testes em src/test (sem elas, os testes de integração são ignorados).
+      # JWT_SECRET não é necessário: cada teste define app.security.jwt.secret inline.
+      SIGESPIN_TEST_DB_URL: jdbc:postgresql://localhost:5432/sigespin_test
+      SIGESPIN_TEST_DB_USER: postgres
+      SIGESPIN_TEST_DB_PASSWORD: ci-descartavel
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configura Java 21 (Temurin) com cache do Maven
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+          cache-dependency-path: sigespin/pom.xml
+
+      - name: Build e testes
+        run: ./mvnw -B verify
