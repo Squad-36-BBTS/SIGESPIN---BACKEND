@@ -30,11 +30,19 @@ As migrations V1–V9 são aplicadas pelo Flyway na primeira subida. Não rode S
 
 ## 2. Render
 
-1. **New → Web Service**, conectado ao repositório `Squad-36-BBTS/SIGESPIN---BACKEND`, branch `main`.
-2. **Root Directory:** `sigespin`. **Runtime:** Docker (o Render encontra o `Dockerfile`).
-3. **Instance type:** Free.
-4. **Health Check Path:** `/actuator/health`.
-5. Cadastre as variáveis abaixo e faça o deploy.
+**Caminho recomendado: Blueprint.** O arquivo `render.yaml`, na raiz do repositório, já descreve o serviço
+(Docker, plano gratuito, branch `main`, health check, variáveis fixas e `JWT_SECRET` gerado pelo Render).
+
+1. No Render: **New → Blueprint** e escolha o repositório `Squad-36-BBTS/SIGESPIN---BACKEND`.
+2. O Render pede uma única vez os valores marcados como secretos (`DB_*`, `GEMINI_API_KEY`, `ARQUIVOS_S3_ENDPOINT`,
+   `AWS_*`). Preencha com os dados do passo 1.
+3. **Região:** o `render.yaml` usa `virginia`. Crie o projeto do Supabase na região mais próxima
+   (`us-east-1`), para o banco ficar perto da API. A região do Render não pode ser alterada depois.
+
+**Caminho manual (sem Blueprint):** New → Web Service, branch `main`, Runtime Docker, Instance type Free,
+Health Check Path `/actuator/health`. Em **Root Directory** use `sigespin`. No Render, os caminhos do Docker são
+relativos à raiz do repositório: **Dockerfile Path** `./sigespin/Dockerfile` e **Docker Build Context**
+`./sigespin`. Cadastre as variáveis abaixo e um `JWT_SECRET` aleatório.
 
 ## 3. Variáveis de ambiente
 
@@ -59,13 +67,25 @@ O Render define `PORT` sozinho. Opcionais: `DB_POOL_SIZE` (padrão 5), `JWT_EXPI
 
 ## 4. Conferência depois do deploy
 
-```bash
-curl https://<servico>.onrender.com/actuator/health          # {"status":"UP"}
-curl -i https://<servico>.onrender.com/api/projetos           # 401 sem token
+O roteiro `scripts/verificar_deploy.py` (só usa a biblioteca padrão do Python) confere: saúde, login dos três
+perfis, portfólio, 401 sem token, registro de demanda, upload e download do comprovante com o mesmo SHA-256 e,
+opcionalmente, a sugestão da IA. Na segunda execução, depois de reiniciar o serviço, confere que o comprovante
+continua lá (prova de que ele está no Supabase Storage, e não no disco do Render) e arquiva o projeto de teste.
+
+```powershell
+cd sigespin
+$env:SIGESPIN_API_URL = "https://<servico>.onrender.com"
+$env:SMOKE_DEMANDANTE_EMAIL = "..."; $env:SMOKE_DEMANDANTE_SENHA = "..."
+$env:SMOKE_ANALISTA_EMAIL = "...";   $env:SMOKE_ANALISTA_SENHA = "..."
+$env:SMOKE_ESPECIALISTA_EMAIL = "..."; $env:SMOKE_ESPECIALISTA_SENHA = "..."
+$env:SMOKE_TESTAR_IA = "1"          # opcional
+python scripts/verificar_deploy.py
+# Render: Manual Deploy → Restart service. Depois:
+python scripts/verificar_deploy.py --apos-reinicio
 ```
 
-Depois: login, portfólio, upload e download de um comprovante, reinício manual do serviço e novo download
-do mesmo arquivo. Ele precisa continuar lá.
+Os usuários vêm da carga inicial (BE-10), configurada pelas variáveis `CARGA_<PERFIL>_NOME`, `_EMAIL` e `_SENHA`
+assim que essa demanda estiver na `main`. O roteiro cria um projeto `[VERIFICACAO]` com dados fictícios.
 
 ## 5. Limites do plano gratuito
 

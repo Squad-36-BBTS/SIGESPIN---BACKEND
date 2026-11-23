@@ -1,0 +1,49 @@
+# Blueprint do Render para o backend SIGESPIN.
+# No Render: New → Blueprint → escolha este repositório. Ele lê este arquivo e pede
+# os valores marcados com "sync: false" uma única vez, na criação.
+# Nenhum segredo fica neste arquivo.
+services:
+  - type: web
+    name: sigespin-backend
+    runtime: docker
+    plan: free
+    # Escolha a região do Render mais próxima da região do projeto no Supabase
+    # (ex.: virginia ↔ us-east-1). Não pode ser alterada depois.
+    region: virginia
+    branch: main
+    rootDir: sigespin
+    # Caminhos relativos à raiz do repositório, não ao rootDir.
+    dockerfilePath: ./sigespin/Dockerfile
+    dockerContext: ./sigespin
+    healthCheckPath: /actuator/health
+    envVars:
+      # Banco (Supabase → Connect → Session pooler; ver sigespin/DEPLOY_RENDER.md)
+      - key: DB_URL
+        sync: false
+      - key: DB_USERNAME
+        sync: false
+      - key: DB_PASSWORD
+        sync: false
+      # Gerado pelo Render: 256 bits aleatórios em base64.
+      - key: JWT_SECRET
+        generateValue: true
+      - key: CORS_ALLOWED_ORIGINS
+        value: https://sigespin-frontend.vercel.app
+      # IA (plano gratuito do Gemini: apenas dados fictícios)
+      - key: GEMINI_API_KEY
+        sync: false
+      # Comprovantes no Supabase Storage (protocolo S3)
+      - key: ARQUIVOS_TIPO
+        value: S3
+      - key: ARQUIVOS_S3_BUCKET
+        value: comprovantes
+      - key: ARQUIVOS_S3_PATH_STYLE
+        value: "true"
+      - key: ARQUIVOS_S3_ENDPOINT
+        sync: false
+      - key: AWS_REGION
+        sync: false
+      - key: AWS_ACCESS_KEY_ID
+        sync: false
+      - key: AWS_SECRET_ACCESS_KEY
+        sync: false
