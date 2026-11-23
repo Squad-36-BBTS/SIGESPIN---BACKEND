@@ -44,6 +44,6 @@ Detalhes em `docs/INTEGRACAO_GEMINI.md`.
 
 - Ações de mobilização (campanhas, hackathons) não têm cadastro pela API: são incluídas pela equipe no banco.
   Até isso acontecer, demandas induzidas não podem ser registradas.
-- Datas são gravadas sem fuso horário, no relógio do servidor. No Render o relógio é UTC, então os horários
-  aparecem 3 horas à frente do horário de Brasília se o frontend não converter.
+- Datas são gravadas sem fuso horário, no horário de Brasília (o container fixa `America/Sao_Paulo`, PR #9).
+  Usuários em outros fusos veem o horário de Brasília.
 - Os pedidos de acesso não têm prazo de retenção definido (LGPD).
