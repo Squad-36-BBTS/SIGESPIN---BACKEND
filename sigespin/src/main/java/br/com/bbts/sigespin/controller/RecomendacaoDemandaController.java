@@ -29,6 +29,13 @@ public class RecomendacaoDemandaController {
         return PaginaResponse.de(recomendacoes.listar(status, pagina.getPageNumber(), pagina.getPageSize()));
     }
 
+    /** BE-08 — Consulta uma recomendação pelo ID. */
+    @GetMapping("/{id}")
+    @PreAuthorize("isAuthenticated()")
+    public RecomendacaoRegistradaResponse buscarPorId(@PathVariable Long id) {
+        return recomendacoes.buscarPorId(id);
+    }
+
     @PostMapping
     @PreAuthorize("hasAnyRole('ANALISTA', 'ESPECIALISTA')")
     public ResponseEntity<RecomendacaoRegistradaResponse> recomendar(@Valid @RequestBody RecomendarDemandaRequest entrada) {

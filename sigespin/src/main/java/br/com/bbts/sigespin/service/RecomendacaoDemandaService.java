@@ -8,6 +8,7 @@ import br.com.bbts.sigespin.repository.portfolio.RecomendacaoDemandaRepository;
 import br.com.bbts.sigespin.repository.seguranca.UsuarioRepository;
 import br.com.bbts.sigespin.security.UsuarioAtualService;
 import jakarta.persistence.EntityManager;
+import br.com.bbts.sigespin.exception.RecursoNaoEncontradoException;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
 import org.springframework.data.domain.*;
@@ -97,6 +98,25 @@ public class RecomendacaoDemandaService {
         return recomendacoes.consultar(usuario.getId(), usuario.getPerfil() == PerfilUsuario.ESPECIALISTA,
                 status, PageRequest.of(pagina, tamanho, Sort.by(Sort.Direction.DESC, "criadoEm", "id")))
                 .map(this::resposta);
+    }
+
+    /**
+     * BE-08 — Busca uma recomendação pelo ID.
+     * Visível ao autor, ao destinatário e a qualquer ESPECIALISTA.
+     */
+    @Transactional(readOnly = true)
+    @PreAuthorize("isAuthenticated()")
+    public RecomendacaoRegistradaResponse buscarPorId(@NotNull @Positive Long id) {
+        var usuario = usuarioAtual.obterAtivo();
+        var recomendacao = recomendacoes.findById(id)
+                .orElseThrow(() -> new RecursoNaoEncontradoException("Recomendação não encontrada com id " + id));
+        boolean gestor = usuario.getPerfil() == PerfilUsuario.ESPECIALISTA;
+        boolean envolvido = recomendacao.getAutor().getId().equals(usuario.getId())
+                || recomendacao.getDestinatario().getId().equals(usuario.getId());
+        if (!gestor && !envolvido) {
+            throw new AccessDeniedException("Sem permissão para visualizar esta recomendação.");
+        }
+        return resposta(recomendacao);
     }
 
     private RecomendacaoDemanda paraResponder(Long id, Usuario autor) {
