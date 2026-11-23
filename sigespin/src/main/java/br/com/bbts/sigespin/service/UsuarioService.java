@@ -13,8 +13,8 @@ import java.util.List;
 
 /**
  * BE-07 — Serviço de consulta de usuários com filtros opcionais.
- * Qualquer usuário autenticado pode consultar a lista (necessário para o frontend
- * selecionar destinatários de recomendações, analistas de projetos etc.).
+ * Apenas Analista e Especialista consultam a lista, que traz e-mails (C-01). Eles a usam para
+ * escolher especialistas a consultar e destinatários de recomendações.
  */
 @Service
 @Validated

@@ -26,7 +26,8 @@ public class UsuarioController {
     }
 
     @GetMapping
-    @PreAuthorize("isAuthenticated()")
+    // C-01: só quem consulta especialistas e gerencia o fluxo vê a lista (com e-mails).
+    @PreAuthorize("hasAnyRole('ANALISTA', 'ESPECIALISTA')")
     public List<UsuarioResponse> listar(
             @RequestParam(required = false) PerfilUsuario perfil,
             @RequestParam(required = false) Boolean ativo) {

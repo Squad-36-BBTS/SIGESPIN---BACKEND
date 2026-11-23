@@ -16,6 +16,8 @@ public interface UsuarioRepository extends JpaRepository<Usuario, Long> {
     Optional<Usuario> findByEmailIgnoreCase(String email);
     boolean existsByEmail(String email);
 
+    boolean existsByEmailIgnoreCase(String email);
+
     /** Lista usuários com filtros opcionais de perfil e situação, ordenados por nome. */
     @Query("SELECT u FROM Usuario u " +
            "WHERE (:perfil IS NULL OR u.perfil = :perfil) " +

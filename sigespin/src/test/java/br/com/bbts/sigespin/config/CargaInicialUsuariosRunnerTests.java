@@ -8,6 +8,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
+import static org.mockito.Mockito.lenient;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.boot.ApplicationArguments;
@@ -55,7 +56,7 @@ class CargaInicialUsuariosRunnerTests {
         when(environment.getProperty("CARGA_ESPECIALISTA_EMAIL")).thenReturn("especialista@bbts.com.br");
         when(environment.getProperty("CARGA_ESPECIALISTA_SENHA")).thenReturn("Segredo789!");
 
-        when(usuarioRepository.existsByEmail(anyString())).thenReturn(false);
+        when(usuarioRepository.existsByEmailIgnoreCase(anyString())).thenReturn(false);
         when(passwordEncoder.encode(anyString())).thenAnswer(invocation -> "hash_" + invocation.getArgument(0));
 
         runner.run(applicationArguments);
@@ -87,7 +88,7 @@ class CargaInicialUsuariosRunnerTests {
         when(environment.getProperty("CARGA_DEMANDANTE_EMAIL")).thenReturn("demandante@bbts.com.br");
         when(environment.getProperty("CARGA_DEMANDANTE_SENHA")).thenReturn("Segredo123!");
 
-        when(usuarioRepository.existsByEmail("demandante@bbts.com.br")).thenReturn(true);
+        when(usuarioRepository.existsByEmailIgnoreCase("demandante@bbts.com.br")).thenReturn(true);
 
         runner.run(applicationArguments);
 
@@ -100,6 +101,39 @@ class CargaInicialUsuariosRunnerTests {
         when(environment.getProperty("CARGA_DEMANDANTE_NOME")).thenReturn("Demandante Teste");
         when(environment.getProperty("CARGA_DEMANDANTE_EMAIL")).thenReturn(null); // Ausente
         when(environment.getProperty("CARGA_DEMANDANTE_SENHA")).thenReturn("Segredo123!");
+
+        runner.run(applicationArguments);
+
+        verify(usuarioRepository, never()).save(any(Usuario.class));
+    }
+
+    @Test
+    @DisplayName("C-02: Deve tratar e-mail sem diferenciar maiúsculas e gravá-lo em minúsculas")
+    void deveNormalizarEmailParaEvitarUsuarioDuplicado() {
+        // Os demais perfis ficam sem variáveis: o runner só deve agir sobre o Analista.
+        lenient().when(environment.getProperty(anyString())).thenReturn(null);
+        when(environment.getProperty("CARGA_ANALISTA_NOME")).thenReturn("Analista Teste");
+        when(environment.getProperty("CARGA_ANALISTA_EMAIL")).thenReturn("  Analista@BBTS.com.br ");
+        when(environment.getProperty("CARGA_ANALISTA_SENHA")).thenReturn("Segredo456!");
+        when(usuarioRepository.existsByEmailIgnoreCase("analista@bbts.com.br")).thenReturn(false);
+        when(passwordEncoder.encode(anyString())).thenReturn("hash");
+
+        runner.run(applicationArguments);
+
+        ArgumentCaptor<Usuario> salvo = ArgumentCaptor.forClass(Usuario.class);
+        verify(usuarioRepository).save(salvo.capture());
+        assertEquals("analista@bbts.com.br", salvo.getValue().getEmail());
+    }
+
+    @Test
+    @DisplayName("C-02: Não deve recriar usuário quando só a caixa do e-mail mudou")
+    void naoDeveDuplicarUsuarioQuandoEmailMudaSoNaCaixa() {
+        // Os demais perfis ficam sem variáveis: o runner só deve agir sobre o Analista.
+        lenient().when(environment.getProperty(anyString())).thenReturn(null);
+        when(environment.getProperty("CARGA_ANALISTA_NOME")).thenReturn("Analista Teste");
+        when(environment.getProperty("CARGA_ANALISTA_EMAIL")).thenReturn("ANALISTA@bbts.com.br");
+        when(environment.getProperty("CARGA_ANALISTA_SENHA")).thenReturn("Segredo456!");
+        when(usuarioRepository.existsByEmailIgnoreCase("analista@bbts.com.br")).thenReturn(true);
 
         runner.run(applicationArguments);
 
