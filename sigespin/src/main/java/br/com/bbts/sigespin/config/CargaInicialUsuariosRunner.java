@@ -1,5 +1,6 @@
 package br.com.bbts.sigespin.config;
 
+import java.util.Locale;
 import br.com.bbts.sigespin.model.entity.Usuario;
 import br.com.bbts.sigespin.model.enums.PerfilUsuario;
 import br.com.bbts.sigespin.repository.seguranca.UsuarioRepository;
@@ -59,8 +60,9 @@ public class CargaInicialUsuariosRunner implements ApplicationRunner {
             return;
         }
 
-        String emailTratado = email.trim();
-        if (usuarioRepository.existsByEmail(emailTratado)) {
+        // C-02: o login compara e-mails sem diferenciar maiúsculas; a carga faz o mesmo e grava em minúsculas.
+        String emailTratado = email.trim().toLowerCase(Locale.ROOT);
+        if (usuarioRepository.existsByEmailIgnoreCase(emailTratado)) {
             log.info("Usuário inicial para o perfil {} com email [{}] já existe. Ignorando criação para garantir idempotência.",
                     perfil, emailTratado);
             return;
