@@ -47,3 +47,23 @@ services:
         sync: false
       - key: AWS_SECRET_ACCESS_KEY
         sync: false
+      # Usuários iniciais (BE-10): um por perfil, criados na primeira subida.
+      # Use e-mails e senhas próprios do squad; nada disso vai para o Git.
+      - key: CARGA_DEMANDANTE_NOME
+        sync: false
+      - key: CARGA_DEMANDANTE_EMAIL
+        sync: false
+      - key: CARGA_DEMANDANTE_SENHA
+        sync: false
+      - key: CARGA_ANALISTA_NOME
+        sync: false
+      - key: CARGA_ANALISTA_EMAIL
+        sync: false
+      - key: CARGA_ANALISTA_SENHA
+        sync: false
+      - key: CARGA_ESPECIALISTA_NOME
+        sync: false
+      - key: CARGA_ESPECIALISTA_EMAIL
+        sync: false
+      - key: CARGA_ESPECIALISTA_SENHA
+        sync: false
