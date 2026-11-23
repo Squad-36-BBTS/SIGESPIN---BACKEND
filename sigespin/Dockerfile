@@ -25,7 +25,8 @@ USER sigespin
 
 # O plano gratuito do Render tem 512 MB. A JVM usa no máximo 75% disso para heap,
 # com coletor serial (menos memória) e pilhas de thread menores.
-ENV JAVA_TOOL_OPTIONS="-XX:MaxRAMPercentage=75 -XX:+UseSerialGC -Xss512k -XX:+ExitOnOutOfMemoryError"
+# O relógio do Render é UTC; as datas do domínio (LocalDateTime) seguem o horário de Brasília.
+ENV JAVA_TOOL_OPTIONS="-XX:MaxRAMPercentage=75 -XX:+UseSerialGC -Xss512k -XX:+ExitOnOutOfMemoryError -Duser.timezone=America/Sao_Paulo"
 
 # O Render define PORT; o application.properties usa ${PORT:8080}.
 EXPOSE 8080
