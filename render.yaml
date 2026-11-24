@@ -12,9 +12,9 @@ services:
     region: virginia
     branch: main
     rootDir: sigespin
-    # Caminhos relativos à raiz do repositório, não ao rootDir.
-    dockerfilePath: ./sigespin/Dockerfile
-    dockerContext: ./sigespin
+    # Com rootDir definido, o Render resolve estes caminhos a partir de sigespin/.
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
     healthCheckPath: /actuator/health
     envVars:
       # Banco (Supabase → Connect → Session pooler; ver sigespin/DEPLOY_RENDER.md)

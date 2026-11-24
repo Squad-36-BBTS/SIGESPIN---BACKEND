@@ -40,9 +40,8 @@ As migrations V1–V9 são aplicadas pelo Flyway na primeira subida. Não rode S
    (`us-east-1`), para o banco ficar perto da API. A região do Render não pode ser alterada depois.
 
 **Caminho manual (sem Blueprint):** New → Web Service, branch `main`, Runtime Docker, Instance type Free,
-Health Check Path `/actuator/health`. Em **Root Directory** use `sigespin`. No Render, os caminhos do Docker são
-relativos à raiz do repositório: **Dockerfile Path** `./sigespin/Dockerfile` e **Docker Build Context**
-`./sigespin`. Cadastre as variáveis abaixo e um `JWT_SECRET` aleatório.
+Health Check Path `/actuator/health`. Em **Root Directory** use `sigespin`. Com o Root Directory definido, os
+caminhos do Docker são relativos a essa pasta: **Dockerfile Path** `./Dockerfile` e **Docker Build Context** `.`. Cadastre as variáveis abaixo e um `JWT_SECRET` aleatório.
 
 ## 3. Variáveis de ambiente
 
