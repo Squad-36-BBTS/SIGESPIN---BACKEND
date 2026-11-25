@@ -1,5 +1,12 @@
 package br.com.bbts.sigespin.controller;
 
+import org.springframework.web.HttpMediaTypeNotSupportedException;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
+import br.com.bbts.sigespin.config.IdRequisicaoFilter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
 import br.com.bbts.sigespin.exception.ConflitoEstadoException;
 import br.com.bbts.sigespin.exception.IaIndisponivelException;
 import br.com.bbts.sigespin.exception.RecursoNaoEncontradoException;
@@ -27,6 +34,8 @@ import java.util.List;
 @RestControllerAdvice
 @Order(Ordered.LOWEST_PRECEDENCE)
 public class GlobalExceptionHandler {
+
+    private static final Logger LOG = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ApiErroResponse> handleValidacao(MethodArgumentNotValidException ex) {
@@ -75,6 +84,26 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(new ApiErroResponse(
                 Instant.now(), 409, "CONFLITO_CONCORRENCIA",
                 "Uma operação concorrente está atualizando o registro. Recarregue e tente novamente.", List.of()));
+    }
+
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ResponseEntity<ApiErroResponse> handleRotaInexistente(Exception ex) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ApiErroResponse(Instant.now(),
+                HttpStatus.NOT_FOUND.value(), "RECURSO_NAO_ENCONTRADO", "Rota não encontrada.", List.of()));
+    }
+
+    @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+    public ResponseEntity<ApiErroResponse> handleMetodoNaoSuportado(Exception ex) {
+        return ResponseEntity.status(HttpStatus.METHOD_NOT_ALLOWED).body(new ApiErroResponse(Instant.now(),
+                HttpStatus.METHOD_NOT_ALLOWED.value(), "METODO_NAO_SUPORTADO",
+                "Método HTTP não suportado nesta rota.", List.of()));
+    }
+
+    @ExceptionHandler(HttpMediaTypeNotSupportedException.class)
+    public ResponseEntity<ApiErroResponse> handleTipoConteudoNaoSuportado(Exception ex) {
+        return ResponseEntity.status(HttpStatus.UNSUPPORTED_MEDIA_TYPE).body(new ApiErroResponse(Instant.now(),
+                HttpStatus.UNSUPPORTED_MEDIA_TYPE.value(), "TIPO_CONTEUDO_NAO_SUPORTADO",
+                "Tipo de conteúdo não suportado nesta rota.", List.of()));
     }
 
     @ExceptionHandler(RecursoNaoEncontradoException.class)
@@ -198,11 +227,15 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiErroResponse> handleErroGeral(Exception ex) {
+        LOG.error("Erro interno não tratado", ex);
+        String idRequisicao = MDC.get(IdRequisicaoFilter.CHAVE_MDC);
+        String mensagem = "Ocorreu um erro interno inesperado no servidor."
+                + (idRequisicao == null ? "" : " Código da requisição: " + idRequisicao + ".");
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new ApiErroResponse(
                 Instant.now(),
                 HttpStatus.INTERNAL_SERVER_ERROR.value(),
                 "ERRO_INTERNO",
-                "Ocorreu um erro interno inesperado no servidor.",
+                mensagem,
                 List.of()
         ));
     }
