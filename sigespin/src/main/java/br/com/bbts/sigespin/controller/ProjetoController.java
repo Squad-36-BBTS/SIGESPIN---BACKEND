@@ -3,12 +3,14 @@ package br.com.bbts.sigespin.controller;
 import br.com.bbts.sigespin.dto.comum.PaginaResponse;
 import br.com.bbts.sigespin.dto.projeto.DemandaCreateRequest;
 import br.com.bbts.sigespin.dto.projeto.FiltroPortfolio;
+import br.com.bbts.sigespin.dto.projeto.ProjetoDetalheCompletoResponse;
 import br.com.bbts.sigespin.dto.projeto.ProjetoDetalheResponse;
 import br.com.bbts.sigespin.dto.projeto.ProjetoResponse;
 import br.com.bbts.sigespin.model.enums.ArenaTipo;
 import br.com.bbts.sigespin.model.enums.EstadoTarefa;
 import br.com.bbts.sigespin.model.enums.OrigemDemanda;
 import br.com.bbts.sigespin.security.UsuarioPrincipal;
+import br.com.bbts.sigespin.service.DetalheProjetoService;
 import br.com.bbts.sigespin.service.ProjetoService;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.PageRequest;
@@ -32,9 +34,11 @@ import java.net.URI;
 public class ProjetoController {
 
     private final ProjetoService projetoService;
+    private final DetalheProjetoService detalheProjeto;
 
-    public ProjetoController(ProjetoService projetoService) {
+    public ProjetoController(ProjetoService projetoService, DetalheProjetoService detalheProjeto) {
         this.projetoService = projetoService;
+        this.detalheProjeto = detalheProjeto;
     }
 
     /**
@@ -68,10 +72,11 @@ public class ProjetoController {
         return PaginaResponse.de(projetoService.listarProjetos(filtro, seguro));
     }
 
+    /** Detalhe completo no formato {@code ProjetoDetalhe} do frontend: projeto, registros, históricos e transições. */
     @GetMapping("/{id}")
     @PreAuthorize("isAuthenticated()")
-    public ProjetoDetalheResponse buscarPorId(@PathVariable("id") Long id) {
-        return projetoService.buscarPorId(id);
+    public ProjetoDetalheCompletoResponse buscarPorId(@PathVariable("id") Long id) {
+        return detalheProjeto.detalhar(id);
     }
 
     @PostMapping

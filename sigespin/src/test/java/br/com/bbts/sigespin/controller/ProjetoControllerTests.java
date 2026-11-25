@@ -5,11 +5,13 @@ import br.com.bbts.sigespin.dto.projeto.EtapaResumoResponse;
 import br.com.bbts.sigespin.dto.projeto.ProjetoDetalheResponse;
 import br.com.bbts.sigespin.dto.projeto.ProjetoResponse;
 import br.com.bbts.sigespin.dto.projeto.FiltroPortfolio;
+import br.com.bbts.sigespin.dto.projeto.ProjetoDetalheCompletoResponse;
 import br.com.bbts.sigespin.dto.projeto.UsuarioResumoResponse;
 import br.com.bbts.sigespin.exception.RecursoNaoEncontradoException;
 import br.com.bbts.sigespin.model.enums.ArenaTipo;
 import br.com.bbts.sigespin.model.enums.OrigemDemanda;
 import br.com.bbts.sigespin.model.enums.PerfilUsuario;
+import br.com.bbts.sigespin.service.DetalheProjetoService;
 import br.com.bbts.sigespin.service.ProjetoService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;
@@ -53,6 +55,9 @@ class ProjetoControllerTests {
     @MockBean
     private ProjetoService projetoService;
 
+    @MockBean
+    private DetalheProjetoService detalheProjeto;
+
     @Test
     @DisplayName("Deve listar projetos com paginação e limitar tamanho máximo a 100")
     void deveListarProjetosComLimiteDePaginacao() throws Exception {
@@ -90,25 +95,29 @@ class ProjetoControllerTests {
     void deveBuscarProjetoPorIdComSucesso() throws Exception {
         UsuarioResumoResponse po = new UsuarioResumoResponse(1L, "PO", "po@bbts.com.br", PerfilUsuario.ANALISTA);
         EtapaResumoResponse etapa = new EtapaResumoResponse(1L, "IDEACAO", "Ideação", 0, null);
-        ProjetoDetalheResponse detalhe = new ProjetoDetalheResponse(
-                10L, "Demanda IA", "Descrição da dor", 100L, ArenaTipo.NEGOCIOS_DIGITAIS,
-                etapa, OrigemDemanda.ESPONTANEA, null, 1, "Hipótese", false,
-                BigDecimal.valueOf(15000), po, po, po, 0L, LocalDateTime.now(), LocalDateTime.now()
-        , false, null, null, null);
+        ProjetoResponse projeto = new ProjetoResponse(
+                10L, "Demanda IA", "Descrição da dor", OrigemDemanda.ESPONTANEA, null, 100L, po, po, po,
+                ArenaTipo.NEGOCIOS_DIGITAIS, "Hipótese", false, BigDecimal.valueOf(15000), etapa, 1, List.of(),
+                false, null, null, 0L, LocalDateTime.now(), LocalDateTime.now());
+        ProjetoDetalheCompletoResponse detalhe = new ProjetoDetalheCompletoResponse(projeto, null, null, null,
+                List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of(),
+                List.of(), List.of(), List.of(), List.of());
 
-        when(projetoService.buscarPorId(10L)).thenReturn(detalhe);
+        when(detalheProjeto.detalhar(10L)).thenReturn(detalhe);
 
         mockMvc.perform(get("/api/projetos/10"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(10))
                 .andExpect(jsonPath("$.titulo").value("Demanda IA"))
-                .andExpect(jsonPath("$.dispendioEstimado").value(15000));
+                .andExpect(jsonPath("$.dispendioEstimado").value(15000))
+                .andExpect(jsonPath("$.projeto").doesNotExist())
+                .andExpect(jsonPath("$.qualificacoes").isArray());
     }
 
     @Test
     @DisplayName("Deve retornar 404 quando o projeto não for encontrado")
     void deveRetornar404QuandoNaoEncontrado() throws Exception {
-        when(projetoService.buscarPorId(999L))
+        when(detalheProjeto.detalhar(999L))
                 .thenThrow(new RecursoNaoEncontradoException("Projeto não encontrado com id 999"));
 
         mockMvc.perform(get("/api/projetos/999"))
