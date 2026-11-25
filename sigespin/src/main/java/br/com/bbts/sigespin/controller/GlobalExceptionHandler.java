@@ -7,6 +7,7 @@ import br.com.bbts.sigespin.config.IdRequisicaoFilter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
+import org.springframework.data.mapping.PropertyReferenceException;
 import br.com.bbts.sigespin.exception.ConflitoEstadoException;
 import br.com.bbts.sigespin.exception.IaIndisponivelException;
 import br.com.bbts.sigespin.exception.RecursoNaoEncontradoException;
@@ -104,6 +105,12 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.UNSUPPORTED_MEDIA_TYPE).body(new ApiErroResponse(Instant.now(),
                 HttpStatus.UNSUPPORTED_MEDIA_TYPE.value(), "TIPO_CONTEUDO_NAO_SUPORTADO",
                 "Tipo de conteúdo não suportado nesta rota.", List.of()));
+    }
+
+    @ExceptionHandler(PropertyReferenceException.class)
+    public ResponseEntity<ApiErroResponse> handleOrdenacaoInvalida(PropertyReferenceException ex) {
+        return ResponseEntity.badRequest().body(new ApiErroResponse(Instant.now(), HttpStatus.BAD_REQUEST.value(),
+                "REQUISICAO_INVALIDA", "Campo de ordenação inválido: " + ex.getPropertyName() + ".", List.of()));
     }
 
     @ExceptionHandler(RecursoNaoEncontradoException.class)

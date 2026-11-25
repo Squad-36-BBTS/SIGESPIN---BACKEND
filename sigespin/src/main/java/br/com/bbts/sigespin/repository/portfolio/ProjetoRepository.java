@@ -5,13 +5,21 @@ import br.com.bbts.sigespin.model.enums.ArenaTipo;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 @Repository
-public interface ProjetoRepository extends JpaRepository<Projeto, Long> {
+public interface ProjetoRepository extends JpaRepository<Projeto, Long>, JpaSpecificationExecutor<Projeto> {
+
+    // Portfólio filtrado: já traz etapa, pessoas e ação de mobilização, evitando uma consulta por projeto.
+    @Override
+    @EntityGraph(attributePaths = {"etapa", "demandante", "analistaResponsavel", "responsavelPo", "acaoMobilizacao"})
+    Page<Projeto> findAll(Specification<Projeto> filtro, Pageable pagina);
     boolean existsByEtapaId(Long etapaId);
 
     @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
