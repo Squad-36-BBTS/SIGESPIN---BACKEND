@@ -4,6 +4,7 @@ import br.com.bbts.sigespin.dto.projeto.DemandaCreateRequest;
 import br.com.bbts.sigespin.dto.projeto.EtapaResumoResponse;
 import br.com.bbts.sigespin.dto.projeto.ProjetoDetalheResponse;
 import br.com.bbts.sigespin.dto.projeto.ProjetoResponse;
+import br.com.bbts.sigespin.dto.projeto.FiltroPortfolio;
 import br.com.bbts.sigespin.dto.projeto.UsuarioResumoResponse;
 import br.com.bbts.sigespin.exception.RecursoNaoEncontradoException;
 import br.com.bbts.sigespin.model.enums.ArenaTipo;
@@ -58,11 +59,11 @@ class ProjetoControllerTests {
         UsuarioResumoResponse po = new UsuarioResumoResponse(1L, "PO", "po@bbts.com.br", PerfilUsuario.ANALISTA);
         EtapaResumoResponse etapa = new EtapaResumoResponse(1L, "IDEACAO", "Ideação", 0, null);
         ProjetoResponse projeto = new ProjetoResponse(
-                10L, "Demanda IA", ArenaTipo.NEGOCIOS_DIGITAIS, etapa,
-                OrigemDemanda.ESPONTANEA, 1, po, po, po, LocalDateTime.now()
-        , false);
+                10L, "Demanda IA", "Dor", OrigemDemanda.ESPONTANEA, null, null, po, po, po,
+                ArenaTipo.NEGOCIOS_DIGITAIS, null, null, null, etapa, 1, List.of(), false, null, null, 0L,
+                LocalDateTime.now(), LocalDateTime.now());
 
-        when(projetoService.listarProjetos(eq(ArenaTipo.NEGOCIOS_DIGITAIS), eq(1L), eq("IA"), eq(null), any(Pageable.class)))
+        when(projetoService.listarProjetos(eq(FiltroPortfolio.basico(ArenaTipo.NEGOCIOS_DIGITAIS, 1L, "IA", null)), any(Pageable.class)))
                 .thenReturn(new PageImpl<>(List.of(projeto)));
 
         mockMvc.perform(get("/api/projetos")
@@ -74,10 +75,13 @@ class ProjetoControllerTests {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.conteudo[0].id").value(10))
                 .andExpect(jsonPath("$.conteudo[0].titulo").value("Demanda IA"))
-                .andExpect(jsonPath("$.conteudo[0].arena").value("NEGOCIOS_DIGITAIS"));
+                .andExpect(jsonPath("$.conteudo[0].arena").value("NEGOCIOS_DIGITAIS"))
+                .andExpect(jsonPath("$.conteudo[0].etapa.cor").value("#F59E0B"))
+                .andExpect(jsonPath("$.conteudo[0].etapa.terminal").value(false))
+                .andExpect(jsonPath("$.conteudo[0].pendencias").isArray());
 
         ArgumentCaptor<Pageable> captor = ArgumentCaptor.forClass(Pageable.class);
-        verify(projetoService).listarProjetos(eq(ArenaTipo.NEGOCIOS_DIGITAIS), eq(1L), eq("IA"), eq(null), captor.capture());
+        verify(projetoService).listarProjetos(eq(FiltroPortfolio.basico(ArenaTipo.NEGOCIOS_DIGITAIS, 1L, "IA", null)), captor.capture());
         assertEquals(100, captor.getValue().getPageSize(), "O tamanho da página deve ser limitado a 100 no servidor");
     }
 

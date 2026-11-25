@@ -1,5 +1,6 @@
 package br.com.bbts.sigespin.service;
 
+import br.com.bbts.sigespin.dto.projeto.EtapaResumoResponse;
 import br.com.bbts.sigespin.dto.fila.MinhaFilaResponse;
 import br.com.bbts.sigespin.dto.fila.MinhaFilaResponse.CampanhaFila;
 import br.com.bbts.sigespin.dto.fila.MinhaFilaResponse.ConsultaFila;
@@ -63,14 +64,6 @@ import java.util.stream.Collectors;
 public class MinhaFilaService {
     static final int JANELA_RETORNOS_DIAS = 30;
 
-    /** Cores padrão das etapas, iguais às do protótipo; etapas criadas depois usam a cor neutra. */
-    private static final Map<String, String> COR_ETAPA = Map.of(
-            "IDEACAO", "#F59E0B",
-            "POC", "#0EA5E9",
-            "MVP", "#6366F1",
-            "CONCLUIDO", "#10B981",
-            "DESCONTINUADO", "#F43F5E");
-    private static final String COR_NEUTRA = "#64748B";
 
     private final EntityManager em;
     private final UsuarioAtualService usuarioAtual;
@@ -393,7 +386,7 @@ public class MinhaFilaService {
             return null;
         }
         return new EtapaFila(etapa.getId(), etapa.getCodigo(), etapa.getNome(),
-                COR_ETAPA.getOrDefault(etapa.getCodigo(), COR_NEUTRA), etapa.getTerminal() != null);
+                EtapaResumoResponse.cor(etapa.getCodigo()), etapa.getTerminal() != null);
     }
 
     private static UsuarioFila usuario(Usuario u) {

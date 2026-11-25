@@ -3,7 +3,7 @@ package br.com.bbts.sigespin.service;
 import br.com.bbts.sigespin.dto.projeto.DemandaCreateRequest;
 import br.com.bbts.sigespin.dto.projeto.ProjetoDetalheResponse;
 import br.com.bbts.sigespin.dto.projeto.ProjetoResponse;
-import br.com.bbts.sigespin.model.enums.ArenaTipo;
+import br.com.bbts.sigespin.dto.projeto.FiltroPortfolio;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
@@ -13,7 +13,7 @@ import org.springframework.data.domain.Pageable;
  */
 public interface ProjetoService {
 
-    Page<ProjetoResponse> listarProjetos(ArenaTipo arena, Long etapaId, String busca, Boolean arquivado, Pageable pageable);
+    Page<ProjetoResponse> listarProjetos(FiltroPortfolio filtro, Pageable pageable);
 
     ProjetoDetalheResponse buscarPorId(Long id);
 
