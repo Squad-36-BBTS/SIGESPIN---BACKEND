@@ -1,5 +1,6 @@
 package br.com.bbts.sigespin;
 
+import org.springframework.data.domain.PageRequest;
 import br.com.bbts.sigespin.dto.demanda.RegistrarDemandaRequest;
 import br.com.bbts.sigespin.dto.entrega.*;
 import br.com.bbts.sigespin.dto.gestao.*;
@@ -65,7 +66,7 @@ class CicloVidaProjetoServiceTests {
         registro.add("spring.flyway.default-schema", () -> SCHEMA);
     }
 
-    @Autowired EntregaProjetoService entregas;
+    @Autowired EntregaService entregas;
     @Autowired CorrecaoDemandaService correcoes;
     @Autowired GestaoProjetoService gestao;
     @Autowired ConsultaProjetoService portfolio;
@@ -123,26 +124,26 @@ class CicloVidaProjetoServiceTests {
 
     @Test
     void analistaEEspecialistaSubmetemNovasEntregas() {
-        var primeira = entregas.submeter(projetoId, new SubmeterEntregaRequest(" Piloto inicial "));
-        var segunda = como(especialista, () -> entregas.submeter(projetoId, new SubmeterEntregaRequest("MVP revisado")));
+        var primeira = entregas.submeterEntrega(projetoId, new EntregaProjetoRequest(" Piloto inicial "));
+        var segunda = como(especialista, () -> entregas.submeterEntrega(projetoId, new EntregaProjetoRequest("MVP revisado")));
         assertNotEquals(primeira.id(), segunda.id());
         assertEquals("Piloto inicial", primeira.descricao());
-        assertEquals(analista.getId(), primeira.autorId());
-        assertEquals(especialista.getId(), segunda.autorId());
-        assertEquals(2, entregas.listarEntregas(projetoId, 0, 10).getTotalElements());
+        assertEquals(analista.getId(), primeira.autor().id());
+        assertEquals(especialista.getId(), segunda.autor().id());
+        assertEquals(2, entregas.listarEntregasPorProjeto(projetoId, PageRequest.of(0, 10)).getTotalElements());
         assertEquals(4, portfolio.detalhar(projetoId).trlAtual());
     }
 
     @Test
     void donoValidaSucessivamenteSemApagarResultados() {
-        var entrega = entregas.submeter(projetoId, new SubmeterEntregaRequest("MVP"));
+        var entrega = entregas.submeterEntrega(projetoId, new EntregaProjetoRequest("MVP"));
         for (var resultado : ResultadoValidacao.values()) {
-            var validacao = como(dono, () -> entregas.validar(projetoId, entrega.id(),
-                    new RegistrarValidacaoRequest(resultado, "Observação do dono do problema")));
-            assertEquals(dono.getId(), validacao.demandanteId());
+            var validacao = como(dono, () -> entregas.registrarValidacao(projetoId, entrega.id(),
+                    new ValidacaoEntregaRequest(resultado, "Observação do dono do problema")));
+            assertEquals(dono.getId(), validacao.demandante().id());
         }
         for (var usuario : List.of(dono, analista, especialista)) {
-            assertEquals(3, como(usuario, () -> entregas.listarValidacoes(projetoId, 0, 10)).getTotalElements());
+            assertEquals(3, como(usuario, () -> entregas.listarValidacoesPorProjeto(projetoId, PageRequest.of(0, 10))).getTotalElements());
         }
         assertThrows(DataIntegrityViolationException.class, () -> jdbc.update(
                 "UPDATE validacoes_entrega SET observacoes='Apagada' WHERE projeto_id=?", projetoId));
@@ -152,25 +153,26 @@ class CicloVidaProjetoServiceTests {
 
     @Test
     void validaResponsavelEProjetoDaEntrega() {
-        var entrega = entregas.submeter(projetoId, new SubmeterEntregaRequest("MVP"));
-        var entrada = new RegistrarValidacaoRequest(ResultadoValidacao.VALIDADA, "Aceito");
+        var entrega = entregas.submeterEntrega(projetoId, new EntregaProjetoRequest("MVP"));
+        var entrada = new ValidacaoEntregaRequest(ResultadoValidacao.VALIDADA, "Aceito");
         assertThrows(AccessDeniedException.class, () -> como(outroDemandante,
-                () -> entregas.validar(projetoId, entrega.id(), entrada)));
-        assertThrows(AccessDeniedException.class, () -> entregas.validar(projetoId, entrega.id(), entrada));
+                () -> entregas.registrarValidacao(projetoId, entrega.id(), entrada)));
+        assertThrows(AccessDeniedException.class, () -> entregas.registrarValidacao(projetoId, entrega.id(), entrada));
         Long outroProjetoId = tx.execute(status -> projeto().getId());
         assertThrows(RegraNegocioException.class, () -> como(dono,
-                () -> entregas.validar(outroProjetoId, entrega.id(), entrada)));
+                () -> entregas.registrarValidacao(outroProjetoId, entrega.id(), entrada)));
         assertThrows(AccessDeniedException.class, () -> como(dono,
-                () -> entregas.submeter(projetoId, new SubmeterEntregaRequest("MVP"))));
+                () -> entregas.submeterEntrega(projetoId, new EntregaProjetoRequest("MVP"))));
     }
 
     @Test
     void validaCamposObrigatoriosELimitesDePaginacao() {
-        assertThrows(ConstraintViolationException.class, () -> entregas.submeter(projetoId, new SubmeterEntregaRequest(" ")));
+        assertThrows(ConstraintViolationException.class, () -> entregas.submeterEntrega(projetoId, new EntregaProjetoRequest(" ")));
         assertThrows(ConstraintViolationException.class, () -> como(dono,
                 () -> correcoes.registrar(projetoId, new RegistrarCorrecaoRequest(" ", null, null))));
         assertThrows(ConstraintViolationException.class, () -> portfolio.listar(null, null, null, null, -1, 10));
-        assertThrows(ConstraintViolationException.class, () -> entregas.listarEntregas(projetoId, 0, 101));
+        assertEquals(100, entregas.listarEntregasPorProjeto(projetoId, PageRequest.of(0, 101)).getSize(),
+                "página acima de 100 é limitada a 100");
     }
 
     @Test
@@ -232,14 +234,14 @@ class CicloVidaProjetoServiceTests {
 
     @Test
     void arquivamentoBloqueiaTodosOsFluxosDeEscritaEPreservaLeitura() {
-        var entrega = entregas.submeter(projetoId, new SubmeterEntregaRequest("MVP"));
+        var entrega = entregas.submeterEntrega(projetoId, new EntregaProjetoRequest("MVP"));
         var arquivado = arquivar(true);
         assertTrue(arquivado.arquivado());
         assertNotNull(arquivado.arquivadoEm());
         assertEquals(especialista.getId(), arquivado.arquivadoPorId());
         assertEquals(1, portfolio.listar(null, null, arquivado.dados().titulo(), true, 0, 10).getTotalElements());
         assertEquals(0, portfolio.listar(null, null, arquivado.dados().titulo(), false, 0, 10).getTotalElements());
-        assertThrows(RegraNegocioException.class, () -> entregas.submeter(projetoId, new SubmeterEntregaRequest("Outro MVP")));
+        assertThrows(RegraNegocioException.class, () -> entregas.submeterEntrega(projetoId, new EntregaProjetoRequest("Outro MVP")));
         assertThrows(RegraNegocioException.class, () -> qualificacoes.registrar(projetoId,
                 new RegistrarQualificacaoRequest("Tese", "Relevância", "Inovação", "Viável", "TRL", "Fundamento", "Conclusão")));
         assertThrows(RegraNegocioException.class, () -> consultas.consultar(projetoId,
@@ -252,14 +254,14 @@ class CicloVidaProjetoServiceTests {
                 new MovimentarProjetoRequest(governadaId, "Avanço"))));
         assertThrows(RegraNegocioException.class, () -> como(dono, () -> correcoes.registrar(projetoId,
                 new RegistrarCorrecaoRequest("Correção", null, null))));
-        assertThrows(RegraNegocioException.class, () -> como(dono, () -> entregas.validar(projetoId, entrega.id(),
-                new RegistrarValidacaoRequest(ResultadoValidacao.VALIDADA, "Aceito"))));
-        assertEquals(1, como(outroDemandante, () -> entregas.listarEntregas(projetoId, 0, 10)).getTotalElements());
+        assertThrows(RegraNegocioException.class, () -> como(dono, () -> entregas.registrarValidacao(projetoId, entrega.id(),
+                new ValidacaoEntregaRequest(ResultadoValidacao.VALIDADA, "Aceito"))));
+        assertEquals(1, como(outroDemandante, () -> entregas.listarEntregasPorProjeto(projetoId, PageRequest.of(0, 10))).getTotalElements());
         var reativado = arquivar(false);
         assertFalse(reativado.arquivado());
         assertNull(reativado.arquivadoPorId());
         assertEquals(2, gestao.historico(projetoId, 0, 10).getTotalElements());
-        assertNotNull(entregas.submeter(projetoId, new SubmeterEntregaRequest("MVP após reativação")).id());
+        assertNotNull(entregas.submeterEntrega(projetoId, new EntregaProjetoRequest("MVP após reativação")).id());
     }
 
     @Test
@@ -290,14 +292,14 @@ class CicloVidaProjetoServiceTests {
     @Test
     void legadoSemDemandantePodeSerAtribuidoPeloEspecialista() {
         tx.executeWithoutResult(status -> projetos.findById(projetoId).orElseThrow().setDemandante(null));
-        var entrega = entregas.submeter(projetoId, new SubmeterEntregaRequest("MVP legado"));
-        assertThrows(AccessDeniedException.class, () -> como(dono, () -> entregas.validar(projetoId, entrega.id(),
-                new RegistrarValidacaoRequest(ResultadoValidacao.VALIDADA, "Aceito"))));
+        var entrega = entregas.submeterEntrega(projetoId, new EntregaProjetoRequest("MVP legado"));
+        assertThrows(AccessDeniedException.class, () -> como(dono, () -> entregas.registrarValidacao(projetoId, entrega.id(),
+                new ValidacaoEntregaRequest(ResultadoValidacao.VALIDADA, "Aceito"))));
         var versao = portfolio.detalhar(projetoId).versao();
         como(especialista, () -> gestao.atualizar(projetoId,
                 new AtualizarProjetoRequest(dados("Projeto atribuído", analista.getId()), versao, "Atribuir dono")));
-        assertNotNull(como(dono, () -> entregas.validar(projetoId, entrega.id(),
-                new RegistrarValidacaoRequest(ResultadoValidacao.VALIDADA, "Aceito"))).id());
+        assertNotNull(como(dono, () -> entregas.registrarValidacao(projetoId, entrega.id(),
+                new ValidacaoEntregaRequest(ResultadoValidacao.VALIDADA, "Aceito"))).id());
     }
 
     @Test
@@ -422,15 +424,15 @@ class CicloVidaProjetoServiceTests {
                 inicio.countDown();
                 if (!inicio.await(5, TimeUnit.SECONDS)) throw new IllegalStateException("Threads não iniciaram");
                 try {
-                    como(analista, () -> entregas.submeter(projetoId, new SubmeterEntregaRequest("MVP")));
+                    como(analista, () -> entregas.submeterEntrega(projetoId, new EntregaProjetoRequest("MVP")));
                     return true;
                 } catch (RegraNegocioException arquivado) {
                     return false;
                 }
             });
             assertTrue(arquivo.get(15, TimeUnit.SECONDS).arquivado());
-            assertEquals(entrega.get(15, TimeUnit.SECONDS) ? 1 : 0, entregas.listarEntregas(projetoId, 0, 10).getTotalElements());
-            assertThrows(RegraNegocioException.class, () -> entregas.submeter(projetoId, new SubmeterEntregaRequest("Tardia")));
+            assertEquals(entrega.get(15, TimeUnit.SECONDS) ? 1 : 0, entregas.listarEntregasPorProjeto(projetoId, PageRequest.of(0, 10)).getTotalElements());
+            assertThrows(RegraNegocioException.class, () -> entregas.submeterEntrega(projetoId, new EntregaProjetoRequest("Tardia")));
         } finally {
             executor.shutdownNow();
         }
