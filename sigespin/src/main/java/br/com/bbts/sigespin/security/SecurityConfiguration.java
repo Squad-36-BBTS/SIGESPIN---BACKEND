@@ -49,7 +49,7 @@ public class SecurityConfiguration {
         configuration.setAllowedHeaders(List.of("Authorization", "Content-Type", "Accept"));
         // Retry-After: o frontend precisa saber quando tentar de novo após um 429.
         // Content-Disposition: o frontend lê o nome do arquivo no download de comprovantes.
-        configuration.setExposedHeaders(List.of("Authorization", "Retry-After", "Content-Disposition"));
+        configuration.setExposedHeaders(List.of("Authorization", "Retry-After", "Content-Disposition", "X-Request-Id"));
         configuration.setAllowCredentials(false);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
@@ -80,6 +80,8 @@ public class SecurityConfiguration {
                         .requestMatchers("/error").permitAll()
                         // Verificação de saúde do Render: responde só UP/DOWN, sem detalhes.
                         .requestMatchers("/actuator/health").permitAll()
+                        // Documentação da API (OpenAPI e Swagger UI); desligável por SWAGGER_ENABLED=false.
+                        .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
                         .anyRequest().authenticated())
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
                 .build();
