@@ -54,7 +54,7 @@ class EntregaControllerTests {
                 31L, 9L, autor, request.descricao(), LocalDateTime.now()
         );
 
-        when(entregaService.submeterEntrega(eq(9L), any(EntregaProjetoRequest.class), any())).thenReturn(response);
+        when(entregaService.submeterEntrega(eq(9L), any(EntregaProjetoRequest.class))).thenReturn(response);
 
         mockMvc.perform(post("/api/projetos/9/entregas")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -78,7 +78,7 @@ class EntregaControllerTests {
                 88L, 9L, 31L, demandante, request.resultado(), request.observacoes(), LocalDateTime.now()
         );
 
-        when(entregaService.registrarValidacao(eq(9L), eq(31L), any(ValidacaoEntregaRequest.class), any()))
+        when(entregaService.registrarValidacao(eq(9L), eq(31L), any(ValidacaoEntregaRequest.class)))
                 .thenReturn(response);
 
         mockMvc.perform(post("/api/projetos/9/entregas/31/validacoes")

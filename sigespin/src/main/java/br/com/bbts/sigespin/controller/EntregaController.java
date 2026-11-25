@@ -5,13 +5,11 @@ import br.com.bbts.sigespin.dto.entrega.EntregaProjetoRequest;
 import br.com.bbts.sigespin.dto.entrega.EntregaProjetoResponse;
 import br.com.bbts.sigespin.dto.entrega.ValidacaoEntregaRequest;
 import br.com.bbts.sigespin.dto.entrega.ValidacaoEntregaResponse;
-import br.com.bbts.sigespin.security.UsuarioPrincipal;
 import br.com.bbts.sigespin.service.EntregaService;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -45,10 +43,8 @@ public class EntregaController {
     @PreAuthorize("hasAnyRole('ANALISTA', 'ESPECIALISTA')")
     public ResponseEntity<EntregaProjetoResponse> submeterEntrega(
             @PathVariable("projetoId") Long projetoId,
-            @Valid @RequestBody EntregaProjetoRequest request,
-            @AuthenticationPrincipal UsuarioPrincipal principal) {
-        Long autorId = principal != null && principal.getUsuario() != null ? principal.getUsuario().getId() : null;
-        EntregaProjetoResponse criada = entregaService.submeterEntrega(projetoId, request, autorId);
+            @Valid @RequestBody EntregaProjetoRequest request) {
+        EntregaProjetoResponse criada = entregaService.submeterEntrega(projetoId, request);
 
         URI location = ServletUriComponentsBuilder.fromCurrentRequest()
                 .path("/{id}")
@@ -72,10 +68,8 @@ public class EntregaController {
     public ResponseEntity<ValidacaoEntregaResponse> registrarValidacao(
             @PathVariable("projetoId") Long projetoId,
             @PathVariable("entregaId") Long entregaId,
-            @Valid @RequestBody ValidacaoEntregaRequest request,
-            @AuthenticationPrincipal UsuarioPrincipal principal) {
-        Long demandanteId = principal != null && principal.getUsuario() != null ? principal.getUsuario().getId() : null;
-        ValidacaoEntregaResponse validacao = entregaService.registrarValidacao(projetoId, entregaId, request, demandanteId);
+            @Valid @RequestBody ValidacaoEntregaRequest request) {
+        ValidacaoEntregaResponse validacao = entregaService.registrarValidacao(projetoId, entregaId, request);
 
         URI location = ServletUriComponentsBuilder.fromCurrentRequest()
                 .path("/{id}")
